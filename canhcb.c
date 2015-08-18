@@ -56,6 +56,11 @@ static CANHCB_PKT_S * canhcb_hook(UINT32 src)
 	return &RECV_PKT;
 }
 
+static CANHCB_PKT_S * canhcb_hook_null(UINT32 src)
+{
+	return NULL;
+}
+
 static int polling_task(void)
 {
 	assert(INITED == TRUE);
@@ -106,7 +111,13 @@ static void canhcb_init(void)
 	muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 	assert(muxSem != NULL);
 	
-	/* Register Hook */
+	/* Register the NULL Hook */
+	assert(CANHCBHookRegister(canhcbFd, canhcb_hook_null) == 0);
+	
+	/* Drop all the packets */
+	while (CANHCBPktPoll(canhcbFd) != -EAGAIN);
+	
+	/* Register the real hook */
 	assert(CANHCBHookRegister(canhcbFd, canhcb_hook) == 0);
 	
 	/* All done */
