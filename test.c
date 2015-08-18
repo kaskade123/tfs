@@ -11,8 +11,8 @@ static int test_start_entry(void)
 	/* delay for some time */
 	taskDelay(300);
 	
-	hsb_sender_start();
-	canhcb_sender_start();
+	hsb_start();
+	canhcb_start();
 	return 0;
 }
 

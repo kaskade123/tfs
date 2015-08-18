@@ -204,7 +204,7 @@ static void hsb_timer_hook(int arg)
 	hsb_send(arg);
 }
 
-void hsb_sender_start(void)
+void hsb_start(void)
 {
 	/* Basic HSB initialize */
 	hsb_init();

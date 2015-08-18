@@ -144,7 +144,7 @@ static void canhcb_send(INT32 len)
 	assert(semGive(muxSem) == OK);
 }
 
-void canhcb_sender_start(void)
+void canhcb_start(void)
 {
 	/* Initialize canhcb */
 	canhcb_init();
