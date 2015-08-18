@@ -23,12 +23,12 @@ void test_start(void)
 
 static int test_show_entry(void)
 {
-	canhcb_sender_suspend();
-	hsb_sender_suspend();
-	canhcb_show();
-	hsb_show();
-	canhcb_sender_resume();
-	hsb_sender_resume();
+	char print_buf[1024] = {0};
+	
+	canhcb_show(print_buf + strlen(print_buf));
+	hsb_show(print_buf + strlen(print_buf));
+	
+	logMsg(print_buf, 0,0,0,0,0,0);
 	
 	return 0;
 }

@@ -8,7 +8,6 @@ static UINT8 * pktBuf;
 static UINT64 pktSend;
 static UINT64 pktRecv;
 static SEM_ID muxSem;
-static char print_buf[512];
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
 #define HSB_BW_LIMIT	50000000				/* BW limited to 50Mbps */
@@ -231,7 +230,7 @@ void hsb_sender_start(void)
 	assert(TimerEnable(timerFd) == 0);
 }
 
-void hsb_sender_suspend(void)
+static void hsb_sender_suspend(void)
 {
 	/* check if HSB inited */
 	assert(hsbInited);
@@ -242,21 +241,23 @@ void hsb_sender_suspend(void)
 	assert(semGive(muxSem) == OK);
 }
 
-void hsb_sender_resume(void)
+static void hsb_sender_resume(void)
 {
 	/* Re-enable timer */
 	assert(TimerEnable(timerFd) == 0);
 }
 
-void hsb_show(void)
+void hsb_show(char * buf)
 {
-	sprintf(print_buf, "\n"
+	hsb_sender_suspend();
+	
+	sprintf(buf, "\n"
 			"*********** HSB ***********\n"
 			"Total Send Pkts        : %llu\n"
 			"Total Recv Pkts        : %llu\n"
 			"Total Missing Pkts     : %llu\n",
 			pktSend, pktRecv, pktSend - pktRecv);
 	
-	logMsg(print_buf, 0,0,0,0,0,0);
+	hsb_sender_resume();
 }
 

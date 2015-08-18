@@ -18,7 +18,6 @@ static CANHCB_PKT_S SEND_PKT;
 static CANHCB_PKT_S RECV_PKT;
 static BOOL INITED = FALSE;
 static SEM_ID muxSem;
-static char print_buf[512];
 static CANHCB_STATUS_S STAT;
 
 #define CANHCB_BUF_LEN			500		/* Packet DLC limit */
@@ -173,7 +172,7 @@ void canhcb_sender_start(void)
 	assert(TimerEnable(timerFd) == 0);
 }
 
-void canhcb_sender_suspend(void)
+static void canhcb_sender_suspend(void)
 {
 	/* check if HCB inited */
 	assert(INITED);
@@ -184,16 +183,18 @@ void canhcb_sender_suspend(void)
 	assert(semGive(muxSem) == OK);
 }
 
-void canhcb_sender_resume(void)
+static void canhcb_sender_resume(void)
 {
 	/* Re-enable timer */
 	assert(TimerEnable(timerFd) == 0);
 }
 
-void canhcb_show(void)
+void canhcb_show(char * buf)
 {
+	canhcb_sender_suspend();
+	
 	/* construct information content */
-	sprintf(print_buf, "\n"
+	sprintf(buf, "\n"
 			"*********** HCB ***********\n"
 			"LEN CRC Error          : %u\n"
 			"Bit Error              : %u\n"
@@ -212,6 +213,6 @@ void canhcb_show(void)
 			STAT.recv_pkts,
 			STAT.send_pkts - STAT.recv_pkts
 	);
-
-	logMsg(print_buf, 0,0,0,0,0,0);
+	
+	canhcb_sender_resume();
 }

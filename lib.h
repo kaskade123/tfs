@@ -44,6 +44,4 @@ extern void rand_range(UINT8 * ptr, UINT32 size);
 
 #define BUS_DECLARE(name)	\
 	extern void name##_sender_start(void);	\
-	extern void name##_show(void);			\
-	extern void name##_sender_suspend(void);\
-	extern void name##_sender_resume(void);
+	extern void name##_show(char *);
