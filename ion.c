@@ -4,13 +4,7 @@
 
 typedef struct iom_status
 {
-	struct {
-		UINT32 WDOG;
-		UINT32 PWRUP;
-		UINT32 BROWNOUT;
-		UINT32 MCU;
-		UINT32 SOFTWARE;
-	}RESET;
+	UINT32 RESETS;
 	UINT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
@@ -42,7 +36,7 @@ static void ion_pkt_display(void * arg, char * desc)
 static void ion_pkt_display(void * arg, char * desc) {}
 #endif
 
-static void ion_send_pwrup_check(void)
+static void ion_send_statistics_check(void)
 {
 	assert(ionInited);
 	
@@ -51,10 +45,11 @@ static void ion_send_pwrup_check(void)
 	/* 0x02 0x40 CRC */
 	SEND_PKT.PRI = 6;
 	SEND_PKT.DST = IO_ADDR;
-	SEND_PKT.DLC = 3;
-	SEND_PKT.pkt_buf[0] = 2;
-	SEND_PKT.pkt_buf[1] = 0x40;
-	SEND_PKT.pkt_buf[2] = 0x00; /* CRC is ignored by driver due to degration */
+	SEND_PKT.DLC = 4;
+	SEND_PKT.pkt_buf[0] = 3;
+	SEND_PKT.pkt_buf[1] = 0x49;
+	SEND_PKT.pkt_buf[2] = 1;
+	SEND_PKT.pkt_buf[3] = 0x00; /* CRC ignored if packet can degration */
 	
 	ion_pkt_display(&SEND_PKT, "Send");
 	
@@ -65,32 +60,14 @@ static void ion_send_pwrup_check(void)
 	assert(semGive(muxSem) == OK);
 }
 
-static void ion_decode_pwrup_check(void)
+static void ion_decode_statistics_check(void)
 {
-	if (RECV_PKT.DLC != 49)
+	if (RECV_PKT.DLC != 61)
 		return;
 	
 	status.pktRecv++;
-	switch(RECV_PKT.pkt_buf[47])
-	{
-	case 0:
-		status.RESET.WDOG++;
-		break;
-	case 1:
-		status.RESET.PWRUP++;
-		break;
-	case 2:
-		status.RESET.BROWNOUT++;
-		break;
-	case 3:
-		status.RESET.MCU++;
-		break;
-	case 4:
-		status.RESET.SOFTWARE++;
-		break;
-	default:
-		break;
-	}
+	
+	memcpy(&status.RESETS, RECV_PKT.pkt_buf + 56, 4);
 }
 
 static void ion_send_temp_check(void)
@@ -142,8 +119,8 @@ static int polling_task(void)
 			{
 				switch(RECV_PKT.pkt_buf[1])
 				{
-				case 0x00:
-					ion_decode_pwrup_check();
+				case 0x05:
+					ion_decode_statistics_check();
 					break;
 				case 0x16:
 					ion_decode_temp_check();
@@ -196,7 +173,7 @@ static int ion_check_task(void)
 {
 	FOREVER
 	{
-		ion_send_pwrup_check();
+		ion_send_statistics_check();
 		taskDelay(1);
 		ion_send_temp_check();
 		taskDelay(1);
@@ -216,20 +193,12 @@ void ion_show(char * buf)
 {
 	sprintf(buf, "\n"
 			"*********** IOM ***********\n"
-			"Watchdog Reset         : %u\n"
-			"Power Up Reset         : %u\n"
-			"Brownout Reset         : %u\n"
-			"MCU Watchdog Reset     : %u\n"
-			"Software Upgrade Reset : %u\n"
+			"Resets After Power Up  : %u\n"
 			"Temperature            : %u\n"
 			"Packet Sent            : %u\n"
 			"Packet Recv            : %u\n"
 			"Packet Missing         : %u\n",
-			status.RESET.WDOG,
-			status.RESET.PWRUP,
-			status.RESET.BROWNOUT,
-			status.RESET.MCU,
-			status.RESET.SOFTWARE,
+			status.RESETS,
 			status.TEMPERATURE,
 			status.pktSent,
 			status.pktRecv,
