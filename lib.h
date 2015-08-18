@@ -35,6 +35,7 @@ typedef struct hsb_send_pkt
 }__attribute((packed)) HSB_SEND_HEADER;
 
 extern void lib_init(void);
+extern void lib_delayed_init(void);
 extern int ethdev_get(const char * name);
 extern int canhcbdev_get(void);
 extern UINT8 addr_get(void);

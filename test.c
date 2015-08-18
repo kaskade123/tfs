@@ -11,6 +11,9 @@ static int test_start_entry(void)
 	/* delay for some time */
 	taskDelay(300);
 	
+	/* Delayed lib init */
+	lib_delayed_init();
+	
 	hsb_start();
 	canhcb_start();
 	return 0;

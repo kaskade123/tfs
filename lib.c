@@ -1,6 +1,17 @@
 #include "lib.h"
 extern void light_start(void);
 
+void ip_setup(void)
+{
+	int fd = ethdev_get("backplane");
+	char ip_addr[16];
+	
+	assert(fd >= 0);
+	
+	sprintf(ip_addr, "192.168.0.%d", 100 + addr_get());
+	assert(EthernetIPSet(fd, ip_addr) == 0);
+}
+
 void lib_init(void)
 {
 	UINT32 tb, tl;
@@ -8,6 +19,11 @@ void lib_init(void)
 	srand(tl);
 	light_start();
 	return;
+}
+
+void lib_delayed_init(void)
+{
+	ip_setup();
 }
 
 int ethdev_get(const char * name)
