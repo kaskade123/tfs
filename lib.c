@@ -178,6 +178,20 @@ int timer_get(void)
 	return -ENOENT;
 }
 
+int iondev_get(void)
+{
+	SAC_DEV_HEADER_ID pDev = NULL;
+
+	do
+	{
+		pDev = DescriptionGetByType(SAC_DEVICE_TYPE_ION, pDev);
+		if (pDev)
+			return DeviceRequest(pDev);
+	}while(pDev);
+	
+	return -ENOENT;
+}
+
 void rand_range(UINT8 * ptr, UINT32 size)
 {
 	UINT32 i;

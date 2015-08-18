@@ -41,6 +41,7 @@ extern int canhcbdev_get(void);
 extern UINT8 addr_get(void);
 int light_get(char * color);
 extern int timer_get(void);
+extern int iondev_get(void);
 extern void rand_range(UINT8 * ptr, UINT32 size);
 
 #define BUS_DECLARE(name)	\
