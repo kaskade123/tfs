@@ -1,7 +1,6 @@
 #include "lib.h"
 
 static int hsbFd;
-static int LightFd;
 static int timerFd;
 static BOOL hsbInited = FALSE;
 static UINT8 * pktBuf;
@@ -136,12 +135,6 @@ static int polling_task(void)
 		
 		/* Receive all packets pending */
 		while (EthernetRecvPoll(hsbFd) != -EAGAIN);
-		
-		/* Trigger LED blink */
-		if (!(pktSend % HSB_TIMER_FREQ))
-			LightOn(LightFd);
-		else if (!(pktSend % (HSB_TIMER_FREQ*2+1)))
-			LightOff(LightFd);
 	}
 }
 
@@ -154,13 +147,6 @@ static void hsb_init(void)
     /* Request handler */
 	hsbFd = ethdev_get("hsb");
 	assert (hsbFd >= 0);
-	
-	/* Light Request */
-	LightFd = light_get();
-	assert(LightFd >= 0);
-	
-	/* Default to OFF */
-	LightOff(LightFd);
 	
 	/* Timer Request */
 	timerFd = timer_get();

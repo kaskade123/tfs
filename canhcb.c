@@ -12,7 +12,6 @@ typedef struct canhcb_status
 }CANHCB_STATUS_S;
 
 static int canhcbFd;
-static int LightFd;
 static int timerFd;
 static CANHCB_PKT_S SEND_PKT;
 static CANHCB_PKT_S RECV_PKT;
@@ -76,12 +75,6 @@ static int polling_task(void)
 		
 		/* Update status */
 		canhcb_stat_update();
-		
-		/* Trigger LED blink */
-		if (!(STAT.send_pkts % CANHCB_TIMER_FREQ))
-			LightOn(LightFd);
-		else if (!(STAT.send_pkts % (CANHCB_TIMER_FREQ * 2 + 1)))
-			LightOff(LightFd);
 	}
 }
 
@@ -94,13 +87,6 @@ static void canhcb_init(void)
 	/* Get canhcb device handler */
 	canhcbFd = canhcbdev_get();
 	assert(canhcbFd >= 0);
-	
-	/* Request Light */
-	LightFd = light_get();
-	assert(LightFd >= 0);
-	
-	/* Light initial to off */
-	assert(LightOff(LightFd) == 0);
 	
 	/* Timer Get */
 	timerFd = timer_get();
