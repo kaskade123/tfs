@@ -12,6 +12,8 @@ typedef struct iom_status
 		UINT32 SOFTWARE;
 	}RESET;
 	UINT32 TEMPERATURE;
+	UINT32 pktSent;
+	UINT32 pktRecv;
 }IOM_STATUS_S;
 
 static int ionFd;
@@ -58,6 +60,8 @@ static void ion_send_pwrup_check(void)
 	
 	assert(IONPktSend(ionFd, &SEND_PKT) == 0);
 	
+	status.pktSent++;
+	
 	assert(semGive(muxSem) == OK);
 }
 
@@ -65,6 +69,8 @@ static void ion_decode_pwrup_check(void)
 {
 	if (RECV_PKT.DLC != 49)
 		return;
+	
+	status.pktRecv++;
 	switch(RECV_PKT.pkt_buf[47])
 	{
 	case 0:
@@ -105,6 +111,8 @@ static void ion_send_temp_check(void)
 	
 	assert(IONPktSend(ionFd, &SEND_PKT) == 0);
 	
+	status.pktSent++;
+	
 	assert(semGive(muxSem) == OK);
 }
 
@@ -112,6 +120,7 @@ static void ion_decode_temp_check(void)
 {
 	if (RECV_PKT.DLC < 4)
 		return;
+	status.pktRecv++;
 	status.TEMPERATURE = RECV_PKT.pkt_buf[3];
 }
 
@@ -165,6 +174,9 @@ static void ion_init(void)
 	RECV_PKT.pkt_buf = malloc(256);
 	assert(RECV_PKT.pkt_buf != NULL);
 	
+	/* Initialize status struct */
+	memset(&status, 0, sizeof(status));
+	
 	/* Initialize semaphore */
 	muxSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
 	assert(muxSem != NULL);
@@ -209,12 +221,18 @@ void ion_show(char * buf)
 			"Brownout Reset         : %u\n"
 			"MCU Watchdog Reset     : %u\n"
 			"Software Upgrade Reset : %u\n"
-			"Temperature            : %u\n",
+			"Temperature            : %u\n"
+			"Packet Sent            : %u\n"
+			"Packet Recv            : %u\n"
+			"Packet Missing         : %u\n",
 			status.RESET.WDOG,
 			status.RESET.PWRUP,
 			status.RESET.BROWNOUT,
 			status.RESET.MCU,
 			status.RESET.SOFTWARE,
-			status.TEMPERATURE
+			status.TEMPERATURE,
+			status.pktSent,
+			status.pktRecv,
+			status.pktSent - status.pktRecv
 			);
 }
