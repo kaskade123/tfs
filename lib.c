@@ -66,11 +66,33 @@ static void light_start(void)
 			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
+/*
+ * Record one bootup issue in /tffs/boot.log
+ */
+static void boot_record(void)
+{
+	int fd = open("/tffs/boot.log", O_WRONLY|O_CREAT, 0666);
+	char buf[128];
+	
+	assert(fd > 0);
+	lseek(fd, 0, SEEK_END);
+	sprintf(buf, "Bootup\n");
+	write(fd, buf, strlen(buf));
+	ioctl(fd, FIOSYNC, 0);
+	close(fd);
+}
+
+void boot_clear(void)
+{
+	remove("/tffs/boot.log");
+}
+
 void lib_init(void)
 {
 	UINT32 tb, tl;
 	vxTimeBaseGet(&tb, &tl);
 	srand(tl);
+	boot_record();
 	light_start();
 	return;
 }
