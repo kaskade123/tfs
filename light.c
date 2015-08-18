@@ -38,7 +38,7 @@ void light_start(void)
 	redFd = light_get("red");
 	assert(redFd >= 0);
 	
-	greenFd = light_get("test");
+	greenFd = light_get("green");
 	assert(greenFd >= 0);
 	
 	/* Turn On Red Light */
