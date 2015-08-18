@@ -2,9 +2,7 @@
 #include <drv/wdb/wdbEndPktDrv.h>
 #include <inetLib.h>
 
-extern void light_start(void);
-
-void ip_setup(void)
+static void ip_setup(void)
 {
 	int fd = ethdev_get("backplane");
 	char ip_addr[16];
@@ -18,6 +16,54 @@ void ip_setup(void)
 	
 	ipAddr.s_addr = inet_addr(ip_addr);
 	pEndPktDev->ipAddr = ipAddr;
+}
+
+/* Blink in 1Hz */
+static int blink_task(int fd)
+{
+	/* status == 0 : Off
+	 * status == 1 : On
+	 */
+	static int status = 0;
+	
+	FOREVER
+	{
+	
+		if (status)
+		{
+			status = 0;
+			LightOff(fd);
+		}
+		else
+		{
+			status = 1;
+			LightOn(fd);
+		}
+		taskDelay(sysClkRateGet() / 2 + 1);
+	}
+}
+
+/*
+ * Red light should be on, Green light should be blinking
+ */
+static void light_start(void)
+{
+	int redFd;
+	int greenFd;
+	
+	/* Get two light handler */
+	redFd = light_get("red");
+	assert(redFd >= 0);
+	
+	greenFd = light_get("green");
+	assert(greenFd >= 0);
+	
+	/* Turn On Red Light */
+	assert(LightOn(redFd) == 0);
+	
+	/* Start blink task */
+	assert(taskSpawn("tLight", 30, VX_SPE_TASK, 0x4000, blink_task, greenFd, 
+			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
 void lib_init(void)
