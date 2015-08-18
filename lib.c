@@ -1,10 +1,12 @@
 #include "lib.h"
+extern void light_start(void);
 
 void lib_init(void)
 {
 	UINT32 tb, tl;
 	vxTimeBaseGet(&tb, &tl);
 	srand(tl);
+	light_start();
 	return;
 }
 
