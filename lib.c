@@ -160,14 +160,15 @@ UINT8 addr_get(void)
 
 int light_get(char * color)
 {
-	static INDICATOR_DEV_S * pDev = NULL;
+	INDICATOR_DEV_S * pDev = NULL;
 	
 	do
 	{
 		pDev = DescriptionGetByType(SAC_DEVICE_TYPE_INDICATOR, pDev);
 		if (pDev != NULL)
 		{
-			if (strcmp(pDev->color, color) == 0)
+			if ((strlen(pDev->color) == strlen(color)) &&
+				(strcmp(pDev->color, color) == 0))
 				return DeviceRequest(pDev);
 		}
 	}while(pDev != NULL);
