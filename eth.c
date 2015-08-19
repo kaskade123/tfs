@@ -8,14 +8,19 @@
 #define ETH_PKT_LEN		1500		/* Packet Length */
 #define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN)
 
-static BOOL ethInited = FALSE;
-static INT32 hdr[ETH_DEV_COUNT];		/* Ethernet device handler */
-static UINT8 * pkt[ETH_DEV_COUNT]; 		/* Ethernet packet buffer */
-static UINT32 pktSent[ETH_DEV_COUNT]; 	/* Ethernet packet sent */
-static UINT32 pktFail[ETH_DEV_COUNT];  	/* Ethernet packet send fail */
-static UINT32 pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
-static INT32 timerFd;					/* Timer Handler */
-static SEM_ID muxSem;					/* Semaphore */
+typedef struct eth_status
+{
+	BOOL 	ethInited;
+	INT32 	hdr[ETH_DEV_COUNT];		/* Ethernet device handler */
+	UINT8 * pkt[ETH_DEV_COUNT]; 	/* Ethernet packet buffer */
+	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
+	UINT32 	pktFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
+	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
+	INT32 	timerFd;				/* Timer Handler */
+	SEM_ID 	muxSem;					/* Semaphore */
+}ETH_STATUS_S;
+
+static ETH_STATUS_S * pStatus = NULL;
 
 static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 {
@@ -24,7 +29,7 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	/* Hook for eth1 - eth4 */
 	if ((strlen(p->name) == 4) && 
 			(strncmp(p->name, ETH_DEV_PREFIX, strlen(ETH_DEV_PREFIX)) == 0))
-		pktRecv[p->name[strlen(ETH_DEV_PREFIX)] - '0'] ++;
+		pStatus->pktRecv[p->name[strlen(ETH_DEV_PREFIX)] - '1'] ++;
     return TRUE;
 }
 
@@ -32,16 +37,16 @@ static int eth_polling_task(void)
 {
 	int i;
 	
-	assert(ethInited == TRUE);
+	assert(pStatus->ethInited == TRUE);
 	
 	while(1)
 	{
 		/* Wait for send is done */
-		assert(semTake(muxSem, WAIT_FOREVER) == OK);
+		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
 		
 		/* Receive all packets pending */
 		for (i = 0; i < ETH_DEV_COUNT; i++)
-			while (EthernetRecvPoll(hdr[i]) != -EAGAIN);
+			while (EthernetRecvPoll(pStatus->hdr[i]) != -EAGAIN);
 	}
 }
 
@@ -49,14 +54,23 @@ static void eth_init(void)
 {
 	int i;
 	
-	if (ethInited)
+	if (pStatus && pStatus->ethInited)
 		return;
 	
-	timerFd = timer_get();
-	assert(timerFd >= 0);
+	if (pStatus == NULL)
+	{
+		pStatus = malloc(sizeof(*pStatus));
+		assert(pStatus);
+	}
 	
-	muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
-	assert(muxSem != NULL);
+	memset(pStatus, 0, sizeof(*pStatus));
+	
+	pStatus->ethInited = FALSE;
+	pStatus->timerFd = timer_get();
+	assert(pStatus->timerFd >= 0);
+	
+	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
+	assert(pStatus->muxSem != NULL);
 
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
@@ -65,27 +79,29 @@ static void eth_init(void)
 		sprintf(ethName, "eth%d", i+1);
 		
 		/* Request handler, if failed, this is CPU board */
-		hdr[i] = ethdev_get(ethName);
-		if (hdr[i] < 0)
+		pStatus->hdr[i] = ethdev_get(ethName);
+		if (pStatus->hdr[i] < 0)
 			return;
 		
 		/* Initialize packet buffer */
-		pkt[i] = malloc(ETH_BUFFER_LEN);
-		assert(pkt[i] != NULL);
+		pStatus->pkt[i] = malloc(ETH_BUFFER_LEN);
+		assert(pStatus->pkt[i] != NULL);
 		
 		/* Initialize packet counter */
-		pktSent[i] = 0; pktRecv[i] = 0; pktFail[i] = 0;
+		pStatus->pktSent[i] = 0;
+		pStatus->pktRecv[i] = 0;
+		pStatus->pktFail[i] = 0;
 		
 		/* Drop all current packets */
-		assert(EthernetPktDrop(hdr[i], 512) >= 0);
+		assert(EthernetPktDrop(pStatus->hdr[i], 512) >= 0);
 		
 		/* Hook callbacks */
-		assert(EthernetHookDisable(hdr[i]) == 0);
-		assert(EthernetRecvHook(hdr[i], eth_counting_hook) == 0);
-		assert(EthernetHookEnable(hdr[i]) == 0);
+		assert(EthernetHookDisable(pStatus->hdr[i]) == 0);
+		assert(EthernetRecvHook(pStatus->hdr[i], eth_counting_hook) == 0);
+		assert(EthernetHookEnable(pStatus->hdr[i]) == 0);
 	}
 	
-	ethInited = TRUE;
+	pStatus->ethInited = TRUE;
 	
 	assert(taskSpawn("tEthPoll", 255, VX_SPE_TASK, 0x4000, eth_polling_task,
 			0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
@@ -109,7 +125,8 @@ static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len)
 {
     int i;
     
-    assert (ethInited);
+    assert (pStatus);
+    assert (pStatus->ethInited);
     assert (pkt_len > 14);
 
     /* broadcast */
@@ -132,44 +149,44 @@ static void eth_timer_hook(int arg)
 	
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
-		if (eth_send_random(hdr[i], pkt[i], ETH_PKT_LEN))
-			pktFail[i]++;
+		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
+			pStatus->pktFail[i]++;
 		else
-			pktSent[i]++;
+			pStatus->pktSent[i]++;
 	}
 	
-	assert (semGive(muxSem) == OK);
+	assert (semGive(pStatus->muxSem) == OK);
 }
 
 void eth_start(void)
 {
 	eth_init();
 	
-	if (ethInited)
+	if (pStatus->ethInited)
 	{
 		/* Initialize a timer */
-		assert(TimerDisable(timerFd) == 0);
-		assert(TimerFreqSet(timerFd, ETH_TIMER_FREQ) == 0);
-		assert(TimerISRSet(timerFd, eth_timer_hook, 0) == 0);
-		assert(TimerEnable(timerFd) == 0);
+		assert(TimerDisable(pStatus->timerFd) == 0);
+		assert(TimerFreqSet(pStatus->timerFd, ETH_TIMER_FREQ) == 0);
+		assert(TimerISRSet(pStatus->timerFd, eth_timer_hook, 0) == 0);
+		assert(TimerEnable(pStatus->timerFd) == 0);
 	}
 }
 
 static void eth_sender_suspend(void)
 {
 	/* check if inited */
-	assert(ethInited);
+	assert(pStatus->ethInited);
 	
 	/* Make sure all packets sent is received */
-	assert(TimerDisable(timerFd) == 0);
+	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
-	assert(semGive(muxSem) == OK);
+	assert(semGive(pStatus->muxSem) == OK);
 }
 
 static void eth_sender_resume(void)
 {
 	/* Re-enable timer */
-	assert(TimerEnable(timerFd) == 0);
+	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
 void eth_show(char * buf)
@@ -183,7 +200,7 @@ void eth_show(char * buf)
 	{
 		sprintf(buf + strlen(buf),
 			"eth%d : Send %u Recv %u\n",
-			i, pktSent[i], pktRecv[i]);
+			i+1, pStatus->pktSent[i], pStatus->pktRecv[i]);
 	}
 	
 	eth_sender_resume();
