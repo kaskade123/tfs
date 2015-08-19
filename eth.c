@@ -198,8 +198,9 @@ void eth_show(char * buf)
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
 		sprintf(buf + strlen(buf),
-			"eth%d : Send %u Recv %u\n",
-			i+1, pStatus->pktSent[i], pStatus->pktRecv[i]);
+			"eth%d : Send %u Recv %u Fail %u\n",
+			i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
+			pStatus->pktFail[i]);
 	}
 	
 	eth_sender_resume();
