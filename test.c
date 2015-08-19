@@ -37,8 +37,8 @@ static int test_show_entry(void)
 	canhcb_show(print_buf + strlen(print_buf));
 	hsb_show(print_buf + strlen(print_buf));
 	ion_show(print_buf + strlen(print_buf));
-	func_show(print_buf + strlen(print_buf));
 	eth_show(print_buf + strlen(print_buf));
+	func_show(print_buf + strlen(print_buf));
 	
 	logMsg(print_buf, 0,0,0,0,0,0);
 	
