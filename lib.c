@@ -71,15 +71,31 @@ static void light_start(void)
  */
 static void boot_record(void)
 {
-	int fd = open("/tffs/boot.log", O_WRONLY|O_CREAT, 0666);
-	char buf[128];
+	INT32 fd = DeviceRequest(DescriptionGetByType(SAC_DEVICE_TYPE_RTC, NULL));
+	INT32 rtc_time = 0;
+	struct tm tm;
+	FILE * fp;
+	char buf[100] = {0};
 	
-	assert(fd > 0);
-	lseek(fd, 0, SEEK_END);
-	sprintf(buf, "Bootup\n");
-	write(fd, buf, strlen(buf));
-	ioctl(fd, FIOSYNC, 0);
-	close(fd);
+	if (fd > 0)
+	{
+		TimeGet(fd, &rtc_time);
+		DeviceRelease(fd);
+	
+		gmtime_r((time_t *)&rtc_time, &tm);
+	
+		strftime(buf, 100, "%Y-%m-%d %H:%M:%S", &tm);
+	}
+	else
+		sprintf(buf, "NO-RTC-NO-TIME");
+	
+	fp = fopen("/tffs/boot.log", "a");
+	if (fp == NULL)
+		return;
+	
+	fprintf(fp, "%s bootup\n", buf);
+	
+	fclose(fp);
 }
 
 void boot_clear(void)
