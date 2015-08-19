@@ -40,10 +40,9 @@ static void ion_send_statistics_check(void)
 {
 	assert(ionInited);
 	
-	memset(&SEND_PKT, 0, sizeof(SEND_PKT));
-
 	/* 0x02 0x40 CRC */
 	SEND_PKT.PRI = 6;
+	SEND_PKT.RP = 0;
 	SEND_PKT.DST = IO_ADDR;
 	SEND_PKT.DLC = 4;
 	SEND_PKT.pkt_buf[0] = 3;
@@ -74,10 +73,9 @@ static void ion_send_temp_check(void)
 {
 	assert(ionInited);
 	
-	memset(&SEND_PKT, 0, sizeof(SEND_PKT));
-
 	/* 0x02 0x40 CRC */
 	SEND_PKT.PRI = 6;
+	SEND_PKT.RP = 0;
 	SEND_PKT.DST = IO_ADDR;
 	SEND_PKT.DLC = 3;
 	SEND_PKT.pkt_buf[0] = 2;
