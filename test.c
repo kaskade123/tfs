@@ -4,6 +4,7 @@ BUS_DECLARE(canhcb);
 BUS_DECLARE(hsb);
 BUS_DECLARE(ion);
 BUS_DECLARE(func);
+BUS_DECLARE(eth);
 
 static int test_start_entry(void)
 {	
@@ -20,6 +21,7 @@ static int test_start_entry(void)
 	canhcb_start();
 	ion_start();
 	func_start();
+	eth_start();
 	return 0;
 }
 
@@ -36,6 +38,7 @@ static int test_show_entry(void)
 	hsb_show(print_buf + strlen(print_buf));
 	ion_show(print_buf + strlen(print_buf));
 	func_show(print_buf + strlen(print_buf));
+	eth_show(print_buf + strlen(print_buf));
 	
 	logMsg(print_buf, 0,0,0,0,0,0);
 	
