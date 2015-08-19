@@ -57,12 +57,14 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
     sprintf(buf, "%d/%d mV  ", vol, pDev->normal_voltage);
 }
 
-static void _rh_print(RHSNR_DEV_S * pDev, char * buf)
+static void rh_print(char * buf)
 {
     INT32 hdr;
     UINT32 rh;
     UINT32 ratio;
-
+    RHSNR_DEV_S * pDev;
+    
+    pDev = DescriptionGetByType(SAC_DEVICE_TYPE_RH_SENSOR, NULL);
     hdr = DeviceRequest(pDev);
     if (hdr < 0)
         return;
@@ -239,8 +241,7 @@ void func_show(char * buf)
 			(FUNCPTR)_temperature_print);
 	type_print(SAC_DEVICE_TYPE_VOL_SENSOR, buf + strlen(buf),
 			(FUNCPTR)_voltage_print);
-	type_print(SAC_DEVICE_TYPE_RH_SENSOR, buf + strlen(buf),
-			(FUNCPTR)_rh_print);
+	rh_print(buf + strlen(buf));
 	fram_print(buf + strlen(buf));
 	rtc_print(buf + strlen(buf));
 	fs_test("tffs", buf + strlen(buf));
