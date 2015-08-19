@@ -103,7 +103,7 @@ static void eth_init(void)
 	
 	pStatus->ethInited = TRUE;
 	
-	assert(taskSpawn("tEthPoll", 255, VX_SPE_TASK, 0x4000, eth_polling_task,
+	assert(taskSpawn("tEthPoll", 40, VX_SPE_TASK, 0x4000, eth_polling_task,
 			0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
@@ -179,7 +179,6 @@ static void eth_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
-	taskDelay(1);
 	assert(semGive(pStatus->muxSem) == OK);
 }
 
