@@ -30,23 +30,40 @@ void test_start(void)
 	taskSpawn("tStart", 255, VX_SPE_TASK, 0x100000, test_start_entry, 0,0,0,0,0,0,0,0,0,0);
 }
 
-static int test_show_entry(void)
+static int test_show_entry(int delay)
 {
-	char print_buf[2048] = {0};
+	char print_buf[2048];
 	
-	canhcb_show(print_buf + strlen(print_buf));
-	hsb_show(print_buf + strlen(print_buf));
-	ion_show(print_buf + strlen(print_buf));
-	eth_show(print_buf + strlen(print_buf));
-	func_show(print_buf + strlen(print_buf));
-	
-	logMsg(print_buf, 0,0,0,0,0,0);
+	if (delay)
+	{
+		FOREVER
+		{
+			memset(print_buf, 0, 2048);
+			canhcb_show(print_buf + strlen(print_buf));
+			hsb_show(print_buf + strlen(print_buf));
+			ion_show(print_buf + strlen(print_buf));
+			eth_show(print_buf + strlen(print_buf));
+			func_show(print_buf + strlen(print_buf));
+			logMsg(print_buf, 0,0,0,0,0,0);
+			taskDelay(delay * sysClkRateGet());
+		}
+	}
+	else
+	{
+		memset(print_buf, 0, 2048);
+		canhcb_show(print_buf + strlen(print_buf));
+		hsb_show(print_buf + strlen(print_buf));
+		ion_show(print_buf + strlen(print_buf));
+		eth_show(print_buf + strlen(print_buf));
+		func_show(print_buf + strlen(print_buf));
+		logMsg(print_buf, 0,0,0,0,0,0);
+	}
 	
 	return 0;
 }
 
-void test_show(void)
+void test_show(int delay)
 {
-	taskSpawn("tShow", 255, VX_SPE_TASK, 0x100000, test_show_entry, 0,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tShow", 255, VX_SPE_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
