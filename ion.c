@@ -1,6 +1,6 @@
 #include "lib.h"
 
-#define IO_ADDR		12
+#define IO_ADDR		0x3E
 
 typedef struct iom_status
 {
