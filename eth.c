@@ -179,6 +179,7 @@ static void eth_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
+	taskDelay(1);
 	assert(semGive(pStatus->muxSem) == OK);
 	taskDelay(1);
 }
