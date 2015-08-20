@@ -64,6 +64,6 @@ static int test_show_entry(int delay)
 
 void test_show(int delay)
 {
-	taskSpawn("tShow", 255, VX_SPE_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tShow", 254, VX_SPE_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
