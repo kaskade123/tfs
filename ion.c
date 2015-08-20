@@ -158,7 +158,7 @@ static void ion_init(void)
 	ionInited = TRUE;
 	
 	/* Start polling task */
-	taskSpawn("tIONPoll", 254, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tIONPoll", 253, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
 
@@ -183,7 +183,7 @@ void ion_start(void)
 	ion_init();
 	
 	/* Spawn a task for ion send */
-	taskSpawn("tIONChecker", 254, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tIONChecker", 253, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
 void ion_show(char * buf)
