@@ -12,7 +12,7 @@ static int test_start_entry(void)
 	lib_init();
 	
 	/* delay for some time */
-	taskDelay(300);
+	taskDelay(400);
 	
 	/* Delayed lib init */
 	lib_delayed_init();
