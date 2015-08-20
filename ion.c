@@ -13,7 +13,6 @@ typedef struct iom_status
 static int ionFd;
 static ION_PKT_S RECV_PKT, SEND_PKT;
 static BOOL ionInited = FALSE;
-static SEM_ID muxSem;
 static IOM_STATUS_S status;
 
 static ION_PKT_S * ionHook(UINT8 type)
@@ -55,18 +54,22 @@ static void ion_send_statistics_check(void)
 	assert(IONPktSend(ionFd, &SEND_PKT) == 0);
 	
 	status.pktSent++;
-	
-	assert(semGive(muxSem) == OK);
 }
 
 static void ion_decode_statistics_check(void)
 {
-	if (RECV_PKT.DLC != 61)
+	if (RECV_PKT.DLC < 61)
 		return;
 	
 	status.pktRecv++;
 	
 	memcpy(&status.RESETS, RECV_PKT.pkt_buf + 56, 4);
+	
+	/* little endian to big endian convert */
+	status.RESETS = (status.RESETS & 0x000000FF) << 24 ||
+					(status.RESETS & 0x0000FF00) << 8  ||
+					(status.RESETS & 0x00FF0000) >> 8  ||
+					(status.RESETS & 0xFF000000) >> 24;
 }
 
 static void ion_send_temp_check(void)
@@ -87,8 +90,6 @@ static void ion_send_temp_check(void)
 	assert(IONPktSend(ionFd, &SEND_PKT) == 0);
 	
 	status.pktSent++;
-	
-	assert(semGive(muxSem) == OK);
 }
 
 static void ion_decode_temp_check(void)
@@ -106,9 +107,6 @@ static int polling_task(void)
 	
 	FOREVER
 	{
-		/* Wait for one packet sent */
-		assert(semTake(muxSem, WAIT_FOREVER) == OK);
-		
 		do
 		{
 			/* Receive the packet that sent to us */
@@ -129,6 +127,7 @@ static int polling_task(void)
 				ion_pkt_display(&RECV_PKT, "Recv");
 			}
 		}while(ret != -EAGAIN);
+		taskDelay(1);
 	}
 }
 
@@ -152,10 +151,6 @@ static void ion_init(void)
 	/* Initialize status struct */
 	memset(&status, 0, sizeof(status));
 	
-	/* Initialize semaphore */
-	muxSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
-	assert(muxSem != NULL);
-	
 	/* Hook the recevice function */
 	assert(IONHookRegister(ionFd, ionHook) == 0);
 	
@@ -169,12 +164,16 @@ static void ion_init(void)
 
 static int ion_check_task(void)
 {
+	static unsigned int counter = 0;
 	FOREVER
 	{
-		ion_send_statistics_check();
-		taskDelay(1);
 		ion_send_temp_check();
-		taskDelay(1);
+		taskDelay(sysClkRateGet());
+		if (counter ++ >= 30)
+		{
+			ion_send_statistics_check();
+			counter = 0;
+		}
 	}
 }
 
