@@ -34,7 +34,7 @@ static int test_show_entry(int delay)
 {
 	char print_buf[2048];
 	
-	if (delay)
+	if (delay > 0 && delay < 10)
 	{
 		FOREVER
 		{
