@@ -194,16 +194,19 @@ void eth_show(char * buf)
 {
 	int i;
 	
-	eth_sender_suspend();
-	
-	sprintf(buf, "\n*********** ETH ***********\n");
-	for (i = 0; i < ETH_DEV_COUNT; i++)
+	if (pStatus->ethInited)
 	{
-		sprintf(buf + strlen(buf),
-			"eth%d : Send %u Recv %u Fail %u\n",
-			i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
-			pStatus->pktFail[i]);
+		eth_sender_suspend();
+		
+		sprintf(buf, "\n*********** ETH ***********\n");
+		for (i = 0; i < ETH_DEV_COUNT; i++)
+		{
+			sprintf(buf + strlen(buf),
+				"eth%d : Send %u Recv %u Fail %u\n",
+				i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
+				pStatus->pktFail[i]);
+		}
+		
+		eth_sender_resume();
 	}
-	
-	eth_sender_resume();
 }
