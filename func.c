@@ -149,6 +149,24 @@ ends:
     DeviceRelease(hdr);
 }
 
+static void irigb_print(char * str)
+{
+    INT32 hdr;
+    RTC_DEV_S * pDev = NULL;
+    
+    pDev = DescriptionGetByType(SAC_DEVICE_TYPE_DATETIME, NULL);
+    hdr = DeviceRequest(pDev);
+    if (hdr < 0)
+        return;
+
+    if (DateTimeStatus(hdr))
+        sprintf(str, "IRIGB : Failed\t");
+    else
+    	sprintf(str, "IRIGB : OK\t");
+    
+    DeviceRelease(hdr);
+}
+
 static void type_print(UINT16 type, char * buf, FUNCPTR _print)
 {
 	void * pDev = NULL;
@@ -244,6 +262,7 @@ void func_show(char * buf)
 	rh_print(buf + strlen(buf));
 	fram_print(buf + strlen(buf));
 	rtc_print(buf + strlen(buf));
+	irigb_print(buf + strlen(buf));
 	fs_test("tffs", buf + strlen(buf));
 	fs_test("mmc0:0", buf + strlen(buf));
 	serial_test(buf + strlen(buf));
