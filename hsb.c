@@ -225,6 +225,7 @@ static void hsb_sender_suspend(void)
 	assert(TimerDisable(timerFd) == 0);
 	taskDelay(1);
 	assert(semGive(muxSem) == OK);
+	taskDelay(1);
 }
 
 static void hsb_sender_resume(void)
