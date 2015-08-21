@@ -18,6 +18,33 @@ static void ip_setup(void)
 	pEndPktDev->ipAddr = ipAddr;
 }
 
+static void mac_setup(void)
+{
+	int fd = ethdev_get("backplane");
+	unsigned long ethaddr_low, ethaddr_high;
+    char mac[18];
+    
+	assert(fd >= 0);
+	
+    /*
+     * setting the 2nd LSB in the most significant byte of
+     * the address makes it a locally administered ethernet
+     * address
+     */
+    ethaddr_high = (rand() & 0xfeff) | 0x0200;
+    ethaddr_low = rand();
+
+    sprintf(mac, "%02lx.%02lx.%02lx.%02lx.%02lx.%02lx",
+	ethaddr_high >> 8, ethaddr_high & 0xff,
+	ethaddr_low >> 24, (ethaddr_low >> 16) & 0xff,
+	(ethaddr_low >> 8) & 0xff, ethaddr_low & 0xff);
+
+    /* Setup the environment and return with 1 */
+    assert(EthernetMACSet(fd, mac) == 0);
+    
+    DeviceRelease(fd);
+}
+
 /* Blink in 1Hz */
 static int blink_task(int fd)
 {
@@ -115,6 +142,7 @@ void lib_init(void)
 
 void lib_delayed_init(void)
 {
+	mac_setup();
 	ip_setup();
 }
 
