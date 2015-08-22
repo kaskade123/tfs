@@ -2,6 +2,12 @@
 
 typedef struct canhcb_status
 {
+	int canhcbFd;
+	int timerFd;
+	CANHCB_PKT_S SEND_PKT;
+	CANHCB_PKT_S RECV_PKT;
+	BOOL INITED;
+	SEM_ID muxSem;
 	UINT32 len_crc_error;
 	UINT32 bit_error;
 	UINT32 timing_error;
@@ -11,13 +17,7 @@ typedef struct canhcb_status
 	UINT64 recv_pkts;
 }CANHCB_STATUS_S;
 
-static int canhcbFd;
-static int timerFd;
-static CANHCB_PKT_S SEND_PKT;
-static CANHCB_PKT_S RECV_PKT;
-static BOOL INITED = FALSE;
-static SEM_ID muxSem;
-static CANHCB_STATUS_S STAT;
+static CANHCB_STATUS_S * pStatus = NULL;
 
 #define CANHCB_BUF_LEN			500		/* Packet DLC limit */
 #define CANHCB_PKT_LEN			300		/* 300 Bytes pkt */
@@ -30,30 +30,30 @@ static void canhcb_stat_update(void)
 {
 	INT32 regVal;
 	
-	assert(INITED);
+	assert(pStatus->INITED);
 	
-	regVal = CANHCBStatusGet(canhcbFd);
+	regVal = CANHCBStatusGet(pStatus->canhcbFd);
 	
 	assert(regVal >= 0);
 	if (regVal != 0)
 	{
 		if (regVal & SAC_CANHCB_STATUS_BIT_ERR)
-			STAT.bit_error++;
+			pStatus->bit_error++;
 		if (regVal & SAC_CANHCB_STATUS_TIMING_ERR)
-			STAT.timing_error++;
+			pStatus->timing_error++;
 		if (regVal & SAC_CANHCB_STATUS_ARBITRATION_FAIL)
-			STAT.arbitration_error++;
+			pStatus->arbitration_error++;
 		if (regVal & SAC_CANHCB_STATUS_CODE_ERR)
-			STAT.coding_error++;
+			pStatus->coding_error++;
 		if (regVal & SAC_CANHCB_STATUS_LEN_CRC_ERR)
-			STAT.len_crc_error++;
+			pStatus->len_crc_error++;
 	}
 }
 
 static CANHCB_PKT_S * canhcb_hook(UINT32 src)
 {
-	STAT.recv_pkts++;
-	return &RECV_PKT;
+	pStatus->recv_pkts++;
+	return &pStatus->RECV_PKT;
 }
 
 static CANHCB_PKT_S * canhcb_hook_null(UINT32 src)
@@ -63,19 +63,19 @@ static CANHCB_PKT_S * canhcb_hook_null(UINT32 src)
 
 static int polling_task(void)
 {
-	assert(INITED == TRUE);
+	assert(pStatus->INITED == TRUE);
 	
 	while(1)
 	{
 		INT32 ret;
 		
 		/* Wait the send is done */
-		assert(semTake(muxSem, WAIT_FOREVER) == OK);
+		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
 		
 		/* Receive All the packets */
 		do
 		{
-			ret = CANHCBPktPoll(canhcbFd);
+			ret = CANHCBPktPoll(pStatus->canhcbFd);
 		}while(ret != -EAGAIN);
 		
 		/* Update status */
@@ -86,42 +86,44 @@ static int polling_task(void)
 static void canhcb_init(void)
 {
 	/* Only initialize once */
-	if (INITED)
+	if (pStatus && pStatus->INITED)
 		return;
 	
+	/* Malloc status struct */
+	pStatus = malloc(sizeof(*pStatus));
+	assert (pStatus);
+	memset(pStatus, 0, sizeof(*pStatus));
+	
 	/* Get canhcb device handler */
-	canhcbFd = canhcbdev_get();
-	assert(canhcbFd >= 0);
+	pStatus->canhcbFd = canhcbdev_get();
+	assert(pStatus->canhcbFd >= 0);
 	
 	/* Timer Get */
-	timerFd = timer_get();
-	assert(timerFd >= 0);
+	pStatus->timerFd = timer_get();
+	assert(pStatus->timerFd >= 0);
 	
 	/* Initialize packet structure */
-	SEND_PKT.pkt_buf = malloc(CANHCB_BUF_LEN);
-	assert(SEND_PKT.pkt_buf != NULL);
+	pStatus->SEND_PKT.pkt_buf = malloc(CANHCB_BUF_LEN);
+	assert(pStatus->SEND_PKT.pkt_buf != NULL);
 	
-	RECV_PKT.pkt_buf = malloc(CANHCB_BUF_LEN);
-	assert(RECV_PKT.pkt_buf != NULL);
-	
-	/* Initialize stat struct */
-	memset(&STAT, 0, sizeof(STAT));
+	pStatus->RECV_PKT.pkt_buf = malloc(CANHCB_BUF_LEN);
+	assert(pStatus->RECV_PKT.pkt_buf != NULL);
 	
 	/* Initialize semaphore */
-	muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
-	assert(muxSem != NULL);
+	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
+	assert(pStatus->muxSem != NULL);
 	
 	/* Register the NULL Hook */
-	assert(CANHCBHookRegister(canhcbFd, canhcb_hook_null) == 0);
+	assert(CANHCBHookRegister(pStatus->canhcbFd, canhcb_hook_null) == 0);
 	
 	/* Drop all the packets */
-	while (CANHCBPktPoll(canhcbFd) != -EAGAIN);
+	while (CANHCBPktPoll(pStatus->canhcbFd) != -EAGAIN);
 	
 	/* Register the real hook */
-	assert(CANHCBHookRegister(canhcbFd, canhcb_hook) == 0);
+	assert(CANHCBHookRegister(pStatus->canhcbFd, canhcb_hook) == 0);
 	
 	/* All done */
-	INITED = TRUE;
+	pStatus->INITED = TRUE;
 	
 	/* Start polling task */
 	taskSpawn("tCANHCBPoll", CANHCB_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
@@ -135,24 +137,24 @@ static void canhcb_send(INT32 len)
 	assert (len <= CANHCB_BUF_LEN);
 	
 	/* Randomize the packet data */
-	rand_range(SEND_PKT.pkt_buf, len);
+	rand_range(pStatus->SEND_PKT.pkt_buf, len);
 	
 	/* Send one packet to ourselves */
-	SEND_PKT.DLC = len;
-	SEND_PKT.DST = 0x0001 << addr_get();
+	pStatus->SEND_PKT.DLC = len;
+	pStatus->SEND_PKT.DST = 0x0001 << addr_get();
 	do
 	{
-		ret = CANHCBPktSend(canhcbFd, &SEND_PKT);
+		ret = CANHCBPktSend(pStatus->canhcbFd, &pStatus->SEND_PKT);
 	}while(ret == -EBUSY);
 	
 	/* Do statics recording */
-	STAT.send_pkts++;
+	pStatus->send_pkts++;
 	
 	/* Trigger packet polling task
 	 *
 	 * Due to the packet loop back time, there is always one packet missing. 
 	 */
-	assert(semGive(muxSem) == OK);
+	assert(semGive(pStatus->muxSem) == OK);
 }
 
 void canhcb_start(void)
@@ -163,28 +165,28 @@ void canhcb_start(void)
 	/* Initialize timer, the throughput limited to 1Mbps. We send out a 100
 	 * bytes packet, which is 800 bits. To reach 1Mbps, we need to send out 1250
 	 * pkts one second. */
-	assert(TimerDisable(timerFd) == 0);
-	assert(TimerFreqSet(timerFd, CANHCB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(timerFd, canhcb_send, CANHCB_PKT_LEN) == 0);
-	assert(TimerEnable(timerFd) == 0);
+	assert(TimerDisable(pStatus->timerFd) == 0);
+	assert(TimerFreqSet(pStatus->timerFd, CANHCB_TIMER_FREQ) == 0);
+	assert(TimerISRSet(pStatus->timerFd, canhcb_send, CANHCB_PKT_LEN) == 0);
+	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
 static void canhcb_sender_suspend(void)
 {
 	/* check if HCB inited */
-	assert(INITED);
+	assert(pStatus->INITED);
 	
 	/* Make sure all packets sent is received */
-	assert(TimerDisable(timerFd) == 0);
+	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
-	assert(semGive(muxSem) == OK);
+	assert(semGive(pStatus->muxSem) == OK);
 	taskDelay(1);
 }
 
 static void canhcb_sender_resume(void)
 {
 	/* Re-enable timer */
-	assert(TimerEnable(timerFd) == 0);
+	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
 void canhcb_show(char * buf)
@@ -202,14 +204,14 @@ void canhcb_show(char * buf)
 			"Total Send Pkts        : %llu\n"
 			"Total Recv Pkts        : %llu\n"
 			"Total Missing Pkts     : %llu\n",
-			STAT.len_crc_error,
-			STAT.bit_error,
-			STAT.timing_error,
-			STAT.arbitration_error,
-			STAT.coding_error,
-			STAT.send_pkts,
-			STAT.recv_pkts,
-			STAT.send_pkts - STAT.recv_pkts
+			pStatus->len_crc_error,
+			pStatus->bit_error,
+			pStatus->timing_error,
+			pStatus->arbitration_error,
+			pStatus->coding_error,
+			pStatus->send_pkts,
+			pStatus->recv_pkts,
+			pStatus->send_pkts - pStatus->recv_pkts
 	);
 	
 	canhcb_sender_resume();
