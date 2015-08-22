@@ -22,6 +22,9 @@ static int test_start_entry(void)
 	ion_start();
 	func_start();
 	eth_start();
+	
+	/* Last stage lib init */
+	lib_last_stage_init();
 	return 0;
 }
 

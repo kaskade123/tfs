@@ -71,23 +71,30 @@ static int blink_task(int fd)
 }
 
 /*
- * Red light should be on, Green light should be blinking
+ * Red light should be on
  */
 static void light_start(void)
 {
 	int redFd;
-	int greenFd;
 	
 	/* Get two light handler */
 	redFd = light_get("red");
 	assert(redFd >= 0);
 	
-	greenFd = light_get("green");
-	assert(greenFd >= 0);
-	
 	/* Turn On Red Light */
 	assert(LightOn(redFd) == 0);
+}
+
+/*
+ * Light blink start
+ */
+static void light_blink(void)
+{
+	int greenFd;
 	
+	greenFd = light_get("green");
+	assert(greenFd >= 0);
+		
 	/* Start blink task */
 	assert(taskSpawn("tLight", 30, VX_SPE_TASK, 0x4000, blink_task, greenFd, 
 			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
@@ -144,6 +151,11 @@ void lib_delayed_init(void)
 {
 	mac_setup();
 	ip_setup();
+}
+
+void lib_last_stage_init(void)
+{
+	light_blink();
 }
 
 int ethdev_get(const char * name)
