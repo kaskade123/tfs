@@ -158,7 +158,7 @@ static void eth_timer_hook(int arg)
 	assert (semGive(pStatus->muxSem) == OK);
 }
 
-void eth_start(void)
+static void eth_start(void)
 {
 	eth_init();
 	
@@ -190,7 +190,7 @@ static void eth_sender_resume(void)
 	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
-void eth_show(char * buf)
+static void eth_show(char * buf)
 {
 	int i;
 	
@@ -210,3 +210,5 @@ void eth_show(char * buf)
 		eth_sender_resume();
 	}
 }
+
+MODULE_REGISTER(eth);

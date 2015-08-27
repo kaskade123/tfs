@@ -180,7 +180,7 @@ static int ion_check_task(void)
 	}
 }
 
-void ion_start(void)
+static void ion_start(void)
 {
 	/* Basic ION initialization */
 	ion_init();
@@ -189,7 +189,7 @@ void ion_start(void)
 	taskSpawn("tIONChecker", 253, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
-void ion_show(char * buf)
+static void ion_show(char * buf)
 {
 	sprintf(buf, "\n"
 			"*********** IOM ***********\n"
@@ -205,3 +205,5 @@ void ion_show(char * buf)
 			pStatus->pktSent - pStatus->pktRecv
 			);
 }
+
+MODULE_REGISTER(ion);

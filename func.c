@@ -259,7 +259,7 @@ static int dummy_load_task(void)
     }
 }
 
-void func_start(void)
+static void func_start(void)
 {
 	extern char * get_env(char *);
 	
@@ -271,7 +271,7 @@ void func_start(void)
 	}
 }
 
-void func_show(char * buf)
+static void func_show(char * buf)
 {
 	sprintf(buf, "\n********** BOARD **********\n");
 	type_print(SAC_DEVICE_TYPE_TEMP_SENSOR, buf + strlen(buf),
@@ -287,3 +287,5 @@ void func_show(char * buf)
 	serial_test(buf + strlen(buf));
 	sprintf(buf + strlen(buf), "\n");
 }
+
+MODULE_REGISTER(func);

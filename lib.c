@@ -1,6 +1,24 @@
 #include "lib.h"
 #include <drv/wdb/wdbEndPktDrv.h>
 #include <inetLib.h>
+#include <lstLib.h>
+
+static LIST * pModules;
+
+struct testModule
+{
+	NODE node;
+	void (*start)(void);
+	void (*show)(char *);
+};
+
+static void list_init(void)
+{
+	pModules = malloc(sizeof(*pModules));
+	assert(pModules);
+	
+	lstInit(pModules);
+}
 
 static void ip_setup(void)
 {
@@ -142,6 +160,7 @@ void lib_init(void)
 	UINT32 tb, tl;
 	vxTimeBaseGet(&tb, &tl);
 	srand(tl);
+	list_init();
 	boot_record();
 	light_start();
 	return;
@@ -254,4 +273,40 @@ void rand_range(UINT8 * ptr, UINT32 size)
 	UINT32 i;
 	for (i = 0; i < size; i++)
 		ptr[i] = rand();
+}
+
+void moduleReg(void (*start)(void), void (*show)(char *))
+{
+	struct testModule * p;
+	
+	p = malloc(sizeof(*p));
+	assert(p);
+	memset(p, 0, sizeof(*p));
+	
+	p->start = start;
+	p->show = show;
+	
+	lstAdd(pModules, &p->node);
+}
+
+void lib_start()
+{
+	struct testModule * p = (struct testModule *)lstFirst(pModules);
+	
+	while (p != NULL)
+	{
+		p->start();
+		p = (struct testModule *)lstNext((NODE *)p);
+	}
+}
+
+void lib_show(char * buf)
+{
+	struct testModule * p = (struct testModule *)lstFirst(pModules);
+	
+	while (p != NULL)
+	{
+		p->show(buf + strlen(buf));
+		p = (struct testModule *)lstNext((NODE *)p);
+	}
 }

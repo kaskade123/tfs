@@ -204,7 +204,7 @@ static void hsb_timer_hook(int arg)
 	hsb_send(arg);
 }
 
-void hsb_start(void)
+static void hsb_start(void)
 {
 	/* Basic HSB initialize */
 	hsb_init();
@@ -234,7 +234,7 @@ static void hsb_sender_resume(void)
 	assert(TimerEnable(timerFd) == 0);
 }
 
-void hsb_show(char * buf)
+static void hsb_show(char * buf)
 {
 	hsb_sender_suspend();
 	
@@ -248,3 +248,4 @@ void hsb_show(char * buf)
 	hsb_sender_resume();
 }
 
+MODULE_REGISTER(hsb);

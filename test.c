@@ -1,15 +1,22 @@
 #include "lib.h"
 
-BUS_DECLARE(canhcb);
-BUS_DECLARE(hsb);
-BUS_DECLARE(ion);
-BUS_DECLARE(func);
-BUS_DECLARE(eth);
+MODULE_DECLARE(canhcb);
+MODULE_DECLARE(hsb);
+MODULE_DECLARE(ion);
+MODULE_DECLARE(func);
+MODULE_DECLARE(eth);
 
 static int test_start_entry(void)
 {	
 	/* initialize lib */
 	lib_init();
+
+	/* Register modules */
+	hsb_register();
+	canhcb_register();
+	ion_register();
+	func_register();
+	eth_register();
 	
 	/* delay for some time */
 	taskDelay(400);
@@ -17,11 +24,8 @@ static int test_start_entry(void)
 	/* Delayed lib init */
 	lib_delayed_init();
 	
-	hsb_start();
-	canhcb_start();
-	ion_start();
-	func_start();
-	eth_start();
+	/* modules start*/
+	lib_start();
 	
 	/* Last stage lib init */
 	lib_last_stage_init();
@@ -42,11 +46,7 @@ static int test_show_entry(int delay)
 		FOREVER
 		{
 			memset(print_buf, 0, 2048);
-			canhcb_show(print_buf + strlen(print_buf));
-			hsb_show(print_buf + strlen(print_buf));
-			ion_show(print_buf + strlen(print_buf));
-			eth_show(print_buf + strlen(print_buf));
-			func_show(print_buf + strlen(print_buf));
+			lib_show(print_buf);
 			logMsg(print_buf, 0,0,0,0,0,0);
 			taskDelay(delay * sysClkRateGet());
 		}
@@ -54,11 +54,7 @@ static int test_show_entry(int delay)
 	else
 	{
 		memset(print_buf, 0, 2048);
-		canhcb_show(print_buf + strlen(print_buf));
-		hsb_show(print_buf + strlen(print_buf));
-		ion_show(print_buf + strlen(print_buf));
-		eth_show(print_buf + strlen(print_buf));
-		func_show(print_buf + strlen(print_buf));
+		lib_show(print_buf);
 		logMsg(print_buf, 0,0,0,0,0,0);
 	}
 	

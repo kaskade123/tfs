@@ -34,9 +34,17 @@ typedef struct hsb_send_pkt
 	UINT32	DLC : 11;
 }__attribute((packed)) HSB_SEND_HEADER;
 
+/* lib base function called by main module */
 extern void lib_init(void);
 extern void lib_delayed_init(void);
 extern void lib_last_stage_init(void);
+extern void lib_start(void);
+extern void lib_show(char * buf);
+
+/* Module register */
+extern void moduleReg(void (*start)(void), void (*show)(char *));
+
+/* Helper functions */
 extern int ethdev_get(const char * name);
 extern int canhcbdev_get(void);
 extern UINT8 addr_get(void);
@@ -45,6 +53,10 @@ extern int timer_get(void);
 extern int iondev_get(void);
 extern void rand_range(UINT8 * ptr, UINT32 size);
 
-#define BUS_DECLARE(name)	\
-	extern void name##_start(void);	\
-	extern void name##_show(char *);
+/* Module declare */
+#define MODULE_DECLARE(name)	\
+	extern void name##_register(void);
+
+/* Module Register Function */
+#define MODULE_REGISTER(name)	\
+		void name##_register(void) { moduleReg(name##_start, name##_show);}

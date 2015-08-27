@@ -157,7 +157,7 @@ static void canhcb_send(INT32 len)
 	assert(semGive(pStatus->muxSem) == OK);
 }
 
-void canhcb_start(void)
+static void canhcb_start(void)
 {
 	/* Initialize canhcb */
 	canhcb_init();
@@ -189,7 +189,7 @@ static void canhcb_sender_resume(void)
 	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
-void canhcb_show(char * buf)
+static void canhcb_show(char * buf)
 {
 	canhcb_sender_suspend();
 	
@@ -216,3 +216,5 @@ void canhcb_show(char * buf)
 	
 	canhcb_sender_resume();
 }
+
+MODULE_REGISTER(canhcb);
