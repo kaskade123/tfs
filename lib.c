@@ -170,6 +170,7 @@ void time_setup(void)
 		return;
 	
 	assert (TimeGet(fd, (int *)&tv.tv_sec) == 0);
+	tv.tv_usec = 0;
 	
 	assert (settimeofday(&tv, NULL) == OK);
 }
