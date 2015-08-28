@@ -7,19 +7,20 @@ MODULE_DECLARE(func);
 MODULE_DECLARE(eth);
 
 static char print_buf[2048];
+static SEM_ID displaySem;
 
 static int test_show_entry(int delay)
 {
-	/* Default to 10 seconds */
+	/* Default to half an hour */
 	if (delay <= 0)
-		delay = 10;
+		delay = 1800;
 	
-	/* Save all task output to print_buf repeatly */
 	FOREVER
 	{
+		semTake(displaySem, delay * sysClkRateGet());
 		memset(print_buf, 0, 2048);
 		lib_show(print_buf);
-		taskDelay(delay * sysClkRateGet());
+		logMsg(print_buf, 0,0,0,0,0,0);
 	}
 	
 	return 0;
@@ -34,7 +35,7 @@ static int test_start_entry(void)
 {	
 	/* initialize lib */
 	lib_init();
-
+	
 	/* Register modules */
 	hsb_register();
 	canhcb_register();
@@ -52,8 +53,12 @@ static int test_start_entry(void)
 	/* modules start*/
 	lib_start();
 	
+	/* semaphore initialize */
+	displaySem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
+	assert(displaySem);
+	
 	/* show start */
-	lib_show_start(10);
+	lib_show_start(0);
 	
 	/* Last stage lib init */
 	lib_last_stage_init();
@@ -67,6 +72,6 @@ void test_start(void)
 
 void test_show(void)
 {
-	logMsg(print_buf, 0,0,0,0,0,0);
+	semGive(displaySem);
 }
 
