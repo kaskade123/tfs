@@ -264,7 +264,7 @@ static void func_start(void)
 	extern char * get_env(char *);
 	
 	/* Spawn a dummy task if CPU board */
-	if (strcmp(get_env("board"), "N1101A") == 0)
+	if ((strcmp(get_env("board"), "N1101A") == 0) || (strcmp(get_env("board"), "cpu") == 0))
 	{
 		assert (taskSpawn("tDummy", 255, 0, 0x200, dummy_load_task, 
 				0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
