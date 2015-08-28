@@ -19,7 +19,7 @@ static int test_start_entry(void)
 	eth_register();
 	
 	/* delay for some time */
-	taskDelay(400);
+	taskDelay(500);
 	
 	/* Delayed lib init */
 	lib_delayed_init();
