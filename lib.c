@@ -323,6 +323,11 @@ void lib_start()
 void lib_show(char * buf)
 {
 	struct testModule * p = (struct testModule *)lstFirst(pModules);
+	struct timeval tv;
+	
+	gettimeofday(&tv, NULL);
+	
+	sprintf(buf, "\n%s\n", ctime((const time_t *)&tv.tv_sec));
 	
 	while (p != NULL)
 	{
