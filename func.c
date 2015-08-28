@@ -255,7 +255,7 @@ static int dummy_load_task(void)
         while(dummy < 0x1000000)
             dummy++;
         dummy = 0;
-        taskDelay(10);
+        taskDelay(8);
     }
 }
 
