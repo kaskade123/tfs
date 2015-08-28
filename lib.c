@@ -155,6 +155,25 @@ void boot_clear(void)
 	remove("/tffs/boot.log");
 }
 
+void time_setup(void)
+{
+	int fd;
+	struct timeval tv;
+	
+	/* CPU board do not have RTC */
+	if (is_cpu())
+		return;
+	
+	/* get rtc time */
+	fd = DeviceRequest(DescriptionGetByType(SAC_DEVICE_TYPE_RTC, NULL));
+	if (fd < 0)
+		return;
+	
+	assert (TimeGet(fd, (int *)&tv.tv_sec) == 0);
+	
+	assert (settimeofday(&tv, NULL) == OK);
+}
+
 void lib_init(void)
 {
 	UINT32 tb, tl;
@@ -163,6 +182,7 @@ void lib_init(void)
 	list_init();
 	boot_record();
 	light_start();
+	time_setup();
 	return;
 }
 
