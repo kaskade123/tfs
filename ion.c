@@ -11,6 +11,7 @@ typedef struct iom_status
 	UINT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
+	ION_COUNTER_S counter;
 }IOM_STATUS_S;
 
 static IOM_STATUS_S * pStatus = NULL;
@@ -195,11 +196,25 @@ static void ion_show(char * buf)
 			"*********** IOM ***********\n"
 			"Resets After Power Up  : %u\n"
 			"Temperature            : %u\n"
+			"ION Ack Error          : %u\n"
+			"ION Bit Error          : %u\n"
+			"ION CRC Error          : %u\n"
+			"ION Format Error       : %u\n"
+			"ION In-Continuty Error : %u\n"
+			"ION Send Error         : %u\n"
+			"ION Stuff Error        : %u\n"
 			"Packet Sent            : %u\n"
 			"Packet Recv            : %u\n"
 			"Packet Missing         : %u\n",
 			pStatus->RESETS,
 			pStatus->TEMPERATURE,
+			pStatus->counter.ACK_ERROR,
+			pStatus->counter.BIT_ERROR,
+			pStatus->counter.CRC_ERROR,
+			pStatus->counter.FORMAT_ERROR,
+			pStatus->counter.INCON_ERROR,
+			pStatus->counter.SEND_ERROR,
+			pStatus->counter.STUFF_ERROR,
 			pStatus->pktSent,
 			pStatus->pktRecv,
 			pStatus->pktSent - pStatus->pktRecv
@@ -207,3 +222,4 @@ static void ion_show(char * buf)
 }
 
 MODULE_REGISTER(ion);
+
