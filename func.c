@@ -252,19 +252,17 @@ static int dummy_load_task(void)
 	static UINT32 dummy = 0;
     FOREVER
     {
-        while(dummy < 0x10000000)
+        while(dummy < 0x1000000)
             dummy++;
         dummy = 0;
-        taskDelay(0);
+        taskDelay(10);
     }
 }
 
 static void func_start(void)
 {
-	extern char * get_env(char *);
-	
 	/* Spawn a dummy task if CPU board */
-	if ((strcmp(get_env("board"), "N1101A") == 0) || (strcmp(get_env("board"), "cpu") == 0))
+	if (is_cpu())
 	{
 		assert (taskSpawn("tDummy", 255, 0, 0x200, dummy_load_task, 
 				0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
