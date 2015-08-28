@@ -48,10 +48,12 @@ extern void moduleReg(void (*start)(void), void (*show)(char *));
 extern int ethdev_get(const char * name);
 extern int canhcbdev_get(void);
 extern UINT8 addr_get(void);
-int light_get(char * color);
+extern int light_get(char * color);
 extern int timer_get(void);
 extern int iondev_get(void);
 extern void rand_range(UINT8 * ptr, UINT32 size);
+extern int is_cpu(void);
+extern int is_hmi(void);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\

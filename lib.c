@@ -310,3 +310,18 @@ void lib_show(char * buf)
 		p = (struct testModule *)lstNext((NODE *)p);
 	}
 }
+
+int is_cpu(void)
+{
+	extern char * get_env(char *);
+	
+	if ((strcmp(get_env("board"), "N1101A") == 0) || (strcmp(get_env("board"), "cpu") == 0))
+		return 1;
+	else
+		return 0;
+}
+
+int is_hmi(void)
+{
+	return !is_cpu();
+}
