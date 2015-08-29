@@ -21,6 +21,7 @@ static int test_show_entry(int delay)
 		memset(print_buf, 0, 2048);
 		lib_show(print_buf);
 		logMsg(print_buf, 0,0,0,0,0,0);
+		taskDelay(sysClkRateGet());
 	}
 	
 	return 0;
