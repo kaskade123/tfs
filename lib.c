@@ -119,16 +119,24 @@ static void light_blink(void)
 }
 
 /*
- * Record one bootup issue in /tffs/boot.log
+ * Add logging for all information displayed.
  */
-static void boot_record(void)
+static void info_record(void)
 {
 	INT32 fd = DeviceRequest(DescriptionGetByType(SAC_DEVICE_TYPE_RTC, NULL));
 	INT32 rtc_time = 0;
 	struct tm tm;
-	FILE * fp;
+	INT32 logFd;
 	char buf[100] = {0};
 	
+	/* Add /tffs/log into logMsg fd list */
+	logFd = open("/tffs/log", O_WRONLY | O_CREAT | O_APPEND, 0666);
+	if (logFd < 0)
+		return;
+	
+	logFdAdd(logFd);
+	
+	/* See if we can display the time */
 	if (fd > 0)
 	{
 		TimeGet(fd, &rtc_time);
@@ -141,18 +149,9 @@ static void boot_record(void)
 	else
 		sprintf(buf, "NO-RTC-NO-TIME");
 	
-	fp = fopen("/tffs/boot.log", "a");
-	if (fp == NULL)
-		return;
-	
-	fprintf(fp, "%s bootup\n", buf);
-	
-	fclose(fp);
-}
 
-void boot_clear(void)
-{
-	remove("/tffs/boot.log");
+	/* Record the bootup */
+	logMsg("%s bootup\n", (int)buf, 0,0,0,0,0);
 }
 
 void time_setup(void)
@@ -181,7 +180,7 @@ void lib_init(void)
 	vxTimeBaseGet(&tb, &tl);
 	srand(tl);
 	list_init();
-	boot_record();
+	info_record();
 	light_start();
 	time_setup();
 	return;
