@@ -1,6 +1,8 @@
 #include "lib.h"
 
-#define IO_ADDR		0x3E
+#define TEMP_ADDR		0x15	/* Only get the temp of IO that near PWR */
+#define IO_ADDR1		10
+#define IO_ADDR2		14
 
 typedef struct iom_status
 {
@@ -43,7 +45,7 @@ static void ion_send_statistics_check(void)
 	/* 0x02 0x40 CRC */
 	pStatus->SEND_PKT.PRI = 6;
 	pStatus->SEND_PKT.RP = 0;
-	pStatus->SEND_PKT.DST = IO_ADDR;
+	pStatus->SEND_PKT.DST = TEMP_ADDR;
 	pStatus->SEND_PKT.DLC = 4;
 	pStatus->SEND_PKT.pkt_buf[0] = 3;
 	pStatus->SEND_PKT.pkt_buf[1] = 0x49;
@@ -80,7 +82,7 @@ static void ion_send_temp_check(void)
 	/* 0x02 0x40 CRC */
 	pStatus->SEND_PKT.PRI = 6;
 	pStatus->SEND_PKT.RP = 0;
-	pStatus->SEND_PKT.DST = IO_ADDR;
+	pStatus->SEND_PKT.DST = TEMP_ADDR;
 	pStatus->SEND_PKT.DLC = 3;
 	pStatus->SEND_PKT.pkt_buf[0] = 2;
 	pStatus->SEND_PKT.pkt_buf[1] = 0x63;
@@ -99,6 +101,58 @@ static void ion_decode_temp_check(void)
 		return;
 	pStatus->pktRecv++;
 	pStatus->TEMPERATURE = pStatus->RECV_PKT.pkt_buf[3];
+}
+
+static void ion_send_do_active(UINT8 addr)
+{
+	assert(pStatus->ionInited);
+	
+	/* 0x02 0x40 CRC */
+	pStatus->SEND_PKT.PRI = 6;
+	pStatus->SEND_PKT.RP = 0;
+	pStatus->SEND_PKT.DST = addr;
+	pStatus->SEND_PKT.DLC = 9;
+	pStatus->SEND_PKT.pkt_buf[0] = 8;		/* LEN */
+	pStatus->SEND_PKT.pkt_buf[1] = 0x5A;	/* TYPE */
+	pStatus->SEND_PKT.pkt_buf[2] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[3] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[4] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[5] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[6] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[7] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[8] = 0x00;	/* CRC */
+	
+	ion_pkt_display(&pStatus->SEND_PKT, "Send");
+	
+	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
+	
+	pStatus->pktSent++;
+}
+
+static void ion_send_do_deactive(UINT8 addr)
+{
+	assert(pStatus->ionInited);
+	
+	/* 0x02 0x40 CRC */
+	pStatus->SEND_PKT.PRI = 6;
+	pStatus->SEND_PKT.RP = 0;
+	pStatus->SEND_PKT.DST = addr;
+	pStatus->SEND_PKT.DLC = 9;
+	pStatus->SEND_PKT.pkt_buf[0] = 8;		/* LEN */
+	pStatus->SEND_PKT.pkt_buf[1] = 0x5A;	/* TYPE */
+	pStatus->SEND_PKT.pkt_buf[2] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[3] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[4] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[5] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[6] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[7] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[8] = 0x00;	/* CRC */
+	
+	ion_pkt_display(&pStatus->SEND_PKT, "Send");
+	
+	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
+	
+	pStatus->pktSent++;
 }
 
 static int polling_task(void)
@@ -172,6 +226,16 @@ static int ion_check_task(void)
 	FOREVER
 	{
 		ion_send_temp_check();
+		if (counter % 2)
+		{
+			ion_send_do_active(IO_ADDR1);
+			ion_send_do_active(IO_ADDR2);
+		}
+		else
+		{
+			ion_send_do_deactive(IO_ADDR1);
+			ion_send_do_deactive(IO_ADDR2);
+		}
 		taskDelay(sysClkRateGet());
 		if (counter ++ >= 30)
 		{
