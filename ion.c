@@ -108,7 +108,7 @@ static void ion_send_do_active(UINT8 addr)
 	assert(pStatus->ionInited);
 	
 	/* 0x02 0x40 CRC */
-	pStatus->SEND_PKT.PRI = 6;
+	pStatus->SEND_PKT.PRI = 1;
 	pStatus->SEND_PKT.RP = 0;
 	pStatus->SEND_PKT.DST = addr;
 	pStatus->SEND_PKT.DLC = 9;
@@ -134,7 +134,7 @@ static void ion_send_do_deactive(UINT8 addr)
 	assert(pStatus->ionInited);
 	
 	/* 0x02 0x40 CRC */
-	pStatus->SEND_PKT.PRI = 6;
+	pStatus->SEND_PKT.PRI = 1;
 	pStatus->SEND_PKT.RP = 0;
 	pStatus->SEND_PKT.DST = addr;
 	pStatus->SEND_PKT.DLC = 9;
