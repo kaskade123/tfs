@@ -252,7 +252,7 @@ static int dummy_load_task(void)
 	static UINT32 dummy = 0;
     FOREVER
     {
-        while(dummy < 0x1000000)
+        while(dummy < 0x800000)
             dummy++;
         dummy = 0;
         taskDelay(8);
