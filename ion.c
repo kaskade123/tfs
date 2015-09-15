@@ -226,15 +226,18 @@ static int ion_check_task(void)
 	FOREVER
 	{
 		ion_send_temp_check();
-		if (counter % 2)
+		if (addr_get() == 2)
 		{
-			ion_send_do_active(IO_ADDR1);
-			ion_send_do_active(IO_ADDR2);
-		}
-		else
-		{
-			ion_send_do_deactive(IO_ADDR1);
-			ion_send_do_deactive(IO_ADDR2);
+			if (counter % 2)
+			{
+				ion_send_do_active(IO_ADDR1);
+				ion_send_do_active(IO_ADDR2);
+			}
+			else
+			{
+				ion_send_do_deactive(IO_ADDR1);
+				ion_send_do_deactive(IO_ADDR2);
+			}
 		}
 		taskDelay(sysClkRateGet());
 		if (counter ++ >= 30)
