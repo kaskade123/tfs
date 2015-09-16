@@ -1,6 +1,6 @@
 #include "lib.h"
 
-#define TEMP_ADDR		0x15	/* Only get the temp of IO that near PWR */
+#define TEMP_ADDR		15	/* Only get the temp of IO that near PWR */
 #define IO_ADDR1		10
 #define IO_ADDR2		14
 
