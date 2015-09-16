@@ -125,8 +125,6 @@ static void ion_send_do_active(UINT8 addr)
 	ion_pkt_display(&pStatus->SEND_PKT, "Send");
 	
 	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
-	
-	pStatus->pktSent++;
 }
 
 static void ion_send_do_deactive(UINT8 addr)
@@ -151,8 +149,6 @@ static void ion_send_do_deactive(UINT8 addr)
 	ion_pkt_display(&pStatus->SEND_PKT, "Send");
 	
 	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
-	
-	pStatus->pktSent++;
 }
 
 static int polling_task(void)
