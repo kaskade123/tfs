@@ -240,7 +240,7 @@ static int ion_check_task(void)
 			}
 		}
 		taskDelay(sysClkRateGet());
-		if (counter ++ >= 30)
+		if (counter ++ > 30)
 		{
 			ion_send_statistics_check();
 			counter = 0;
