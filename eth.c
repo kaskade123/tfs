@@ -4,7 +4,7 @@
 #define ETH_DEV_PREFIX	"eth"
 #define ETH_BUFFER_LEN	1600
 
-#define ETH_BW_LIMIT	80000000	/* BW limited to 80Mbps */
+#define ETH_BW_LIMIT	8000000		/* BW limited to 8Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
 #define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN)
 
@@ -33,6 +33,42 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
     return TRUE;
 }
 
+static void eth_srcmac_fill(INT32 hdr, UINT8 * pkt)
+{
+    UINT32 mac32[6];
+    char strMAC[20] = {0};
+    int i;
+
+    assert (EthernetMACGet(hdr, strMAC) == 0);
+    sscanf(strMAC, "%x.%x.%x.%x.%x.%x", mac32, mac32 + 1, mac32 + 2, mac32 + 3,
+            mac32 + 4, mac32 + 5);
+
+    for (i = 0; i < 6; i++)
+        pkt[6+i] = mac32[i];
+}
+
+static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len)
+{
+    int i;
+    
+    assert (pStatus);
+    assert (pStatus->ethInited);
+    assert (pkt_len > 14);
+
+    /* broadcast */
+    memset(pkt, 0xFF, 6);
+    /* fillup src mac */
+    eth_srcmac_fill(hdr, pkt);
+    /* type */
+    pkt[12] = 0x08;
+    pkt[13] = 0x00;
+    /* fillup random stuff */
+    for (i = 14; i < pkt_len; i++)
+        pkt[i] = rand();
+
+    return EthernetSendPkt(hdr, pkt, pkt_len);
+}
+
 static int eth_polling_task(void)
 {
 	int i;
@@ -44,9 +80,21 @@ static int eth_polling_task(void)
 		/* Wait for send is done */
 		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
 		
+		/* Send out one packet for each port */
+		for (i = 0; i < ETH_DEV_COUNT; i++)
+		{
+			if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
+				pStatus->pktFail[i]++;
+			else
+				pStatus->pktSent[i]++;
+		}
+		
+		/* Wait for packet to loop back*/
+		taskDelay(1);
+		
 		/* Receive all packets pending */
 		for (i = 0; i < ETH_DEV_COUNT; i++)
-			while (EthernetRecvPoll(pStatus->hdr[i]) != -EAGAIN);
+			while (EthernetRecvPoll(pStatus->hdr[i], NULL) == -EAGAIN);
 	}
 }
 
@@ -107,54 +155,8 @@ static void eth_init(void)
 			0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
-static void eth_srcmac_fill(INT32 hdr, UINT8 * pkt)
-{
-    UINT32 mac32[6];
-    char strMAC[20] = {0};
-    int i;
-
-    assert (EthernetMACGet(hdr, strMAC) == 0);
-    sscanf(strMAC, "%x.%x.%x.%x.%x.%x", mac32, mac32 + 1, mac32 + 2, mac32 + 3,
-            mac32 + 4, mac32 + 5);
-
-    for (i = 0; i < 6; i++)
-        pkt[6+i] = mac32[i];
-}
-
-static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len)
-{
-    int i;
-    
-    assert (pStatus);
-    assert (pStatus->ethInited);
-    assert (pkt_len > 14);
-
-    /* broadcast */
-    memset(pkt, 0xFF, 6);
-    /* fillup src mac */
-    eth_srcmac_fill(hdr, pkt);
-    /* type */
-    pkt[12] = 0x08;
-    pkt[13] = 0x00;
-    /* fillup random stuff */
-    for (i = 14; i < pkt_len; i++)
-        pkt[i] = rand();
-
-    return EthernetSendPkt(hdr, pkt, pkt_len);
-}
-
 static void eth_timer_hook(int arg)
 {
-	int i;
-	
-	for (i = 0; i < ETH_DEV_COUNT; i++)
-	{
-		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
-			pStatus->pktFail[i]++;
-		else
-			pStatus->pktSent[i]++;
-	}
-	
 	assert (semGive(pStatus->muxSem) == OK);
 }
 
@@ -179,9 +181,9 @@ static void eth_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
-	taskDelay(1);
+	taskDelay(2);
 	assert(semGive(pStatus->muxSem) == OK);
-	taskDelay(1);
+	taskDelay(2);
 }
 
 static void eth_sender_resume(void)

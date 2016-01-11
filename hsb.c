@@ -9,8 +9,8 @@ static UINT64 pktRecv;
 static SEM_ID muxSem;
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
-#define HSB_BW_LIMIT	50000000				/* BW limited to 40Mbps */
-#define HSB_SFP_COUNT	25						/* SFP info count */
+#define HSB_BW_LIMIT	4000000					/* BW limited to 4Mbps */
+#define HSB_SFP_COUNT	45						/* SFP info count */
 #define HSB_PKT_LEN		(20+4+24*HSB_SFP_COUNT)	/* HSB Packet Length */
 #define HSB_TIMER_FREQ	(HSB_BW_LIMIT / 8 / HSB_PKT_LEN)
 
@@ -90,7 +90,6 @@ static void hsb_send_pkt(void)
     pktSend++;
     
     /* Due to packet loop time, there is always one packet missing */
-    assert(semGive(muxSem) == OK);
 }
 
 static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
@@ -125,6 +124,23 @@ static void hsb_cfg_ends(UINT8 addr)
     hsb_send_pkt();
 }
 
+static void hsb_send(UINT32 num)
+{
+	UINT8 * dp;
+	
+	assert(hsbInited == TRUE);
+	
+	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * num);
+	assert(dp != NULL);
+	dp[0] = 0x51;	    		/* SFP */
+	dp[1] = rand();    			/* idx */
+	dp[2] = rand();    			/* idx */
+	dp[3] = num;				/* count */
+	rand_range(dp+4, 24 * num);	/* status */
+
+	hsb_send_pkt();
+}
+
 static int polling_task(void)
 {
 	assert(hsbInited == TRUE);
@@ -133,8 +149,14 @@ static int polling_task(void)
 		/* Wait for send is done */
 		assert(semTake(muxSem, WAIT_FOREVER) == OK);
 		
+		/* Send out HSB */
+		hsb_send(HSB_SFP_COUNT);
+		
+		/* Delay some time for receive */
+		taskDelay(1);
+		
 		/* Receive all packets pending */
-		while (EthernetRecvPoll(hsbFd) != -EAGAIN);
+		while (EthernetRecvPoll(hsbFd, NULL) == -EAGAIN);
 	}
 }
 
@@ -182,26 +204,9 @@ static void hsb_init(void)
 	taskSpawn("tHSBPoll", HSB_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
-static void hsb_send(UINT32 num)
-{
-	UINT8 * dp;
-	
-	assert(hsbInited == TRUE);
-	
-	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * num);
-	assert(dp != NULL);
-	dp[0] = 0x51;	    		/* SFP */
-	dp[1] = rand();    			/* idx */
-	dp[2] = rand();    			/* idx */
-	dp[3] = num;				/* count */
-	rand_range(dp+4, 24 * num);	/* status */
-
-	hsb_send_pkt();
-}
-
 static void hsb_timer_hook(int arg)
 {
-	hsb_send(arg);
+    assert(semGive(muxSem) == OK);
 }
 
 static void hsb_start(void)
@@ -212,7 +217,7 @@ static void hsb_start(void)
 	/* Initialize a timer */
 	assert(TimerDisable(timerFd) == 0);
 	assert(TimerFreqSet(timerFd, HSB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(timerFd,hsb_timer_hook, HSB_SFP_COUNT) == 0);
+	assert(TimerISRSet(timerFd,hsb_timer_hook, 0) == 0);
 	assert(TimerEnable(timerFd) == 0);
 }
 
@@ -223,9 +228,9 @@ static void hsb_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(timerFd) == 0);
-	taskDelay(1);
+	taskDelay(2);
 	assert(semGive(muxSem) == OK);
-	taskDelay(1);
+	taskDelay(2);
 }
 
 static void hsb_sender_resume(void)
