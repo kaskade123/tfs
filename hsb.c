@@ -7,6 +7,7 @@ static UINT8 * pktBuf;
 static UINT64 pktSend;
 static UINT64 pktRecv;
 static SEM_ID muxSem;
+static QJOB job;
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
 #define HSB_BW_LIMIT	4000000					/* BW limited to 4Mbps */
@@ -124,21 +125,23 @@ static void hsb_cfg_ends(UINT8 addr)
     hsb_send_pkt();
 }
 
-static void hsb_send(UINT32 num)
+static void hsb_send(void * arg)
 {
 	UINT8 * dp;
 	
 	assert(hsbInited == TRUE);
 	
-	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * num);
+	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * HSB_SFP_COUNT);
 	assert(dp != NULL);
-	dp[0] = 0x51;	    		/* SFP */
-	dp[1] = rand();    			/* idx */
-	dp[2] = rand();    			/* idx */
-	dp[3] = num;				/* count */
-	rand_range(dp+4, 24 * num);	/* status */
+	dp[0] = 0x51;	    					/* SFP */
+	dp[1] = rand();    						/* idx */
+	dp[2] = rand();    						/* idx */
+	dp[3] = HSB_SFP_COUNT;					/* count */
+	rand_range(dp+4, 24 * HSB_SFP_COUNT);	/* status */
 
 	hsb_send_pkt();
+	
+	assert(semGive(muxSem) == OK);
 }
 
 static int polling_task(void)
@@ -148,12 +151,6 @@ static int polling_task(void)
 	{
 		/* Wait for send is done */
 		assert(semTake(muxSem, WAIT_FOREVER) == OK);
-		
-		/* Send out HSB */
-		hsb_send(HSB_SFP_COUNT);
-		
-		/* Delay some time for receive */
-		taskDelay(1);
 		
 		/* Receive all packets pending */
 		while (EthernetRecvPoll(hsbFd, NULL) == -EAGAIN);
@@ -206,7 +203,9 @@ static void hsb_init(void)
 
 static void hsb_timer_hook(int arg)
 {
-    assert(semGive(muxSem) == OK);
+	job.func = hsb_send;
+	QJOB_SET_PRI(&job, 20);
+    queue_add(&job);
 }
 
 static void hsb_start(void)
@@ -228,9 +227,7 @@ static void hsb_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(timerFd) == 0);
-	taskDelay(2);
 	assert(semGive(muxSem) == OK);
-	taskDelay(2);
 }
 
 static void hsb_sender_resume(void)
