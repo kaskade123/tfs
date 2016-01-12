@@ -4,6 +4,7 @@
 #include <lstLib.h>
 
 static LIST * pModules;
+static JOB_QUEUE_ID pQueue;
 
 struct testModule
 {
@@ -174,6 +175,19 @@ void time_setup(void)
 	assert (settimeofday(&tv, NULL) == OK);
 }
 
+void queue_init(void)
+{
+	pQueue = jobQueueCreate(NULL);
+	assert(pQueue != NULL);
+	assert(taskSpawn("tQueue", 40, VX_SPE_TASK, 0x80000, jobQueueProcess,
+			(int)pQueue, 0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
+}
+
+STATUS queue_add(QJOB * pJob)
+{
+	return jobQueuePost(pQueue, pJob);
+}
+
 void lib_init(void)
 {
 	UINT32 tb, tl;
@@ -183,6 +197,7 @@ void lib_init(void)
 	info_record();
 	light_start();
 	time_setup();
+	queue_init();
 	return;
 }
 

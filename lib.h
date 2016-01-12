@@ -10,6 +10,7 @@
 #include <sysLib.h>
 #include <errnoLib.h>
 #include <isrDeferLib.h>
+#include <jobQueueLib.h>
 
 #include <arch/ppc/vxPpcLib.h>
 
@@ -54,6 +55,7 @@ extern int iondev_get(void);
 extern void rand_range(UINT8 * ptr, UINT32 size);
 extern int is_cpu(void);
 extern int is_hmi(void);
+extern STATUS queue_add(QJOB * pJob);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\
