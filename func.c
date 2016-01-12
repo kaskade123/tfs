@@ -279,10 +279,12 @@ static void func_show(char * buf)
 	rh_print(buf + strlen(buf));
 	fram_print(buf + strlen(buf));
 	rtc_print(buf + strlen(buf));
+#if 0
 	irigb_print(buf + strlen(buf));
 	fs_test("tffs", buf + strlen(buf));
 	fs_test("mmc0:0", buf + strlen(buf));
 	serial_test(buf + strlen(buf));
+#endif
 	sprintf(buf + strlen(buf), "\n");
 }
 
