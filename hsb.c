@@ -1,13 +1,18 @@
 #include "lib.h"
 
-static int hsbFd;
-static int timerFd;
-static BOOL hsbInited = FALSE;
-static UINT8 * pktBuf;
-static UINT64 pktSend;
-static UINT64 pktRecv;
-static SEM_ID muxSem;
-static QJOB job;
+typedef struct hsb_status
+{
+	int hsbFd;
+	int timerFd;
+	BOOL hsbInited;
+	UINT8 * pktBuf;
+	UINT64 pktSend;
+	UINT64 pktRecv;
+	SEM_ID muxSem;
+	QJOB job;
+} HSB_STATUS_S;
+
+static HSB_STATUS_S * pStatus = NULL;
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
 #define HSB_BW_LIMIT	40000000				/* BW limited to 40Mbps */
@@ -65,9 +70,9 @@ static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT16 dlc)
 {
 	HSB_SEND_HEADER * pHdr;
 	
-	memset(pktBuf, 0, PKT_BUF_SIZE);
+	memset(pStatus->pktBuf, 0, PKT_BUF_SIZE);
 	
-	pHdr = (HSB_SEND_HEADER *)pktBuf;
+	pHdr = (HSB_SEND_HEADER *)pStatus->pktBuf;
 	
     pHdr->dstMac[5] = 2;
     pHdr->srcMac[5] = 1;
@@ -79,15 +84,15 @@ static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT16 dlc)
 		pHdr->DST = 0xFFFF;
 	pHdr->DLC = dlc;
 	
-	return pktBuf + sizeof(*pHdr);
+	return pStatus->pktBuf + sizeof(*pHdr);
 }
 
 static void hsb_send_pkt(void)
 {
-	hsb_spkt_display(pktBuf);
+	hsb_spkt_display(pStatus->pktBuf);
 
-    if (EthernetSendPkt(hsbFd, pktBuf, pkt_len(pktBuf)) == 0)
-        pktSend++;
+    if (EthernetSendPkt(pStatus->hsbFd, pStatus->pktBuf, pkt_len(pStatus->pktBuf)) == 0)
+    	pStatus->pktSend++;
 }
 
 static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
@@ -98,7 +103,7 @@ static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
 	/* Only acknowledge the packets sent from ourselves */
 	if (pHdr->SRC == addr_get() && buf[sizeof(*pHdr)] == 0x51)
 	{
-		++pktRecv;
+		pStatus->pktRecv++;
 	}
 #else
 	++pktRecv;
@@ -126,7 +131,7 @@ static void hsb_send(void * arg)
 {
 	UINT8 * dp;
 	
-	assert(hsbInited == TRUE);
+	assert(pStatus->hsbInited == TRUE);
 	
 	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * HSB_SFP_COUNT);
 	assert(dp != NULL);
@@ -138,61 +143,69 @@ static void hsb_send(void * arg)
 
 	hsb_send_pkt();
 	
-	assert(semGive(muxSem) == OK);
+	assert(semGive(pStatus->muxSem) == OK);
 }
 
 static int polling_task(void)
 {
-	assert(hsbInited == TRUE);
+	assert(pStatus->hsbInited == TRUE);
 	while(1)
 	{
 		/* Wait for send is done */
-		assert(semTake(muxSem, WAIT_FOREVER) == OK);
+		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
 		
 		/* Receive all packets pending */
-		while (EthernetRecvPoll(hsbFd, NULL) == -EAGAIN);
+		while (EthernetRecvPoll(pStatus->hsbFd, NULL) == -EAGAIN);
 	}
 }
 
 static void hsb_init(void)
 {
 	/* Only init once */
-	if (hsbInited == TRUE)
+	if (pStatus && pStatus->hsbInited)
 		return;
 	
+	if (pStatus == NULL)
+	{
+		pStatus = malloc(sizeof(*pStatus));
+		assert(pStatus);
+	}
+	
+	memset(pStatus, 0, sizeof(*pStatus));
+	
     /* Request handler */
-	hsbFd = ethdev_get("hsb");
-	assert (hsbFd >= 0);
+	pStatus->hsbFd = ethdev_get("hsb");
+	assert (pStatus->hsbFd >= 0);
 	
 	/* Timer Request */
-	timerFd = timer_get();
-	assert(timerFd >= 0);
+	pStatus->timerFd = timer_get();
+	assert(pStatus->timerFd >= 0);
 	
 	/* Initialize global buffer */
-	pktBuf = malloc(PKT_BUF_SIZE);
-	assert(pktBuf != NULL);
+	pStatus->pktBuf = malloc(PKT_BUF_SIZE);
+	assert(pStatus->pktBuf != NULL);
 	
 	/* Initialize semaphore */
-	muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
-	assert(muxSem != NULL);
+	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
+	assert(pStatus->muxSem != NULL);
 	
 	/* Make HSB quiet */
 	hsb_cfg_ends(addr_get());
 
 	/* Drop all the packets received */
-	assert(EthernetPktDrop(hsbFd, 512) >= 0);
+	assert(EthernetPktDrop(pStatus->hsbFd, 512) >= 0);
 	
 	/* Hook the packet copier */
-	assert(EthernetHookDisable(hsbFd) == 0);
-	assert(EthernetRecvHook(hsbFd, hsb_recv_hook) == 0);
-	assert(EthernetHookEnable(hsbFd) == 0);
+	assert(EthernetHookDisable(pStatus->hsbFd) == 0);
+	assert(EthernetRecvHook(pStatus->hsbFd, hsb_recv_hook) == 0);
+	assert(EthernetHookEnable(pStatus->hsbFd) == 0);
 	
 	/* Clear send and recv counter */
-	pktSend = 0;
-	pktRecv = 0;
+	pStatus->pktSend = 0;
+	pStatus->pktRecv = 0;
 	
 	/* Init done */
-	hsbInited = TRUE;
+	pStatus->hsbInited = TRUE;
 	
 	/* Start polling task */
 	taskSpawn("tHSBPoll", HSB_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
@@ -200,9 +213,9 @@ static void hsb_init(void)
 
 static void hsb_timer_hook(int arg)
 {
-	job.func = hsb_send;
-	QJOB_SET_PRI(&job, 20);
-    queue_add(&job);
+	pStatus->job.func = hsb_send;
+	QJOB_SET_PRI(&pStatus->job, 20);
+    queue_add(&pStatus->job);
 }
 
 static void hsb_start(void)
@@ -211,27 +224,27 @@ static void hsb_start(void)
 	hsb_init();
 	
 	/* Initialize a timer */
-	assert(TimerDisable(timerFd) == 0);
-	assert(TimerFreqSet(timerFd, HSB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(timerFd,hsb_timer_hook, 0) == 0);
-	assert(TimerEnable(timerFd) == 0);
+	assert(TimerDisable(pStatus->timerFd) == 0);
+	assert(TimerFreqSet(pStatus->timerFd, HSB_TIMER_FREQ) == 0);
+	assert(TimerISRSet(pStatus->timerFd,hsb_timer_hook, 0) == 0);
+	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
 static void hsb_sender_suspend(void)
 {
 	/* check if HSB inited */
-	assert(hsbInited);
+	assert(pStatus->hsbInited);
 	
 	/* Make sure all packets sent is received */
-	assert(TimerDisable(timerFd) == 0);
+	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
-	assert(semGive(muxSem) == OK);
+	assert(semGive(pStatus->muxSem) == OK);
 }
 
 static void hsb_sender_resume(void)
 {
 	/* Re-enable timer */
-	assert(TimerEnable(timerFd) == 0);
+	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
 static void hsb_show(char * buf)
@@ -243,7 +256,8 @@ static void hsb_show(char * buf)
 			"Total Send Pkts        : %llu\n"
 			"Total Recv Pkts        : %llu\n"
 			"Total Missing Pkts     : %llu\n",
-			pktSend, pktRecv, pktSend - pktRecv);
+			pStatus->pktSend, pStatus->pktRecv,
+			pStatus->pktSend - pStatus->pktRecv);
 	
 	hsb_sender_resume();
 }
