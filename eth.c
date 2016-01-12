@@ -18,6 +18,7 @@ typedef struct eth_status
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
 	INT32 	timerFd;				/* Timer Handler */
 	SEM_ID 	muxSem;					/* Semaphore */
+	QJOB 	job;					/* job queue */
 }ETH_STATUS_S;
 
 static ETH_STATUS_S * pStatus = NULL;
@@ -69,6 +70,21 @@ static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len)
     return EthernetSendPkt(hdr, pkt, pkt_len);
 }
 
+static void eth_send_task(void * arg)
+{
+	int i;
+	/* Send out one packet for each port */
+	for (i = 0; i < ETH_DEV_COUNT; i++)
+	{
+		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
+			pStatus->pktFail[i]++;
+		else
+			pStatus->pktSent[i]++;
+	}
+	
+	assert(semGive(pStatus->muxSem) == OK);
+}
+
 static int eth_polling_task(void)
 {
 	int i;
@@ -79,18 +95,6 @@ static int eth_polling_task(void)
 	{
 		/* Wait for send is done */
 		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
-		
-		/* Send out one packet for each port */
-		for (i = 0; i < ETH_DEV_COUNT; i++)
-		{
-			if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
-				pStatus->pktFail[i]++;
-			else
-				pStatus->pktSent[i]++;
-		}
-		
-		/* Wait for packet to loop back*/
-		taskDelay(1);
 		
 		/* Receive all packets pending */
 		for (i = 0; i < ETH_DEV_COUNT; i++)
@@ -157,7 +161,9 @@ static void eth_init(void)
 
 static void eth_timer_hook(int arg)
 {
-	assert (semGive(pStatus->muxSem) == OK);
+	pStatus->job.func = eth_send_task;
+	QJOB_SET_PRI(&pStatus->job, 20);
+	queue_add(&pStatus->job);
 }
 
 static void eth_start(void)
@@ -181,9 +187,8 @@ static void eth_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
-	taskDelay(2);
+	taskDelay(1);
 	assert(semGive(pStatus->muxSem) == OK);
-	taskDelay(2);
 }
 
 static void eth_sender_resume(void)
