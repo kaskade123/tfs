@@ -10,8 +10,8 @@ static SEM_ID muxSem;
 static QJOB job;
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
-#define HSB_BW_LIMIT	4000000					/* BW limited to 4Mbps */
-#define HSB_SFP_COUNT	45						/* SFP info count */
+#define HSB_BW_LIMIT	40000000				/* BW limited to 40Mbps */
+#define HSB_SFP_COUNT	25						/* SFP info count */
 #define HSB_PKT_LEN		(20+4+24*HSB_SFP_COUNT)	/* HSB Packet Length */
 #define HSB_TIMER_FREQ	(HSB_BW_LIMIT / 8 / HSB_PKT_LEN)
 
