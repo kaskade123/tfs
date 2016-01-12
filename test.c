@@ -59,7 +59,7 @@ static int test_start_entry(void)
 	assert(displaySem);
 	
 	/* show start */
-	lib_show_start(0);
+	lib_show_start(5);
 	
 	/* Last stage lib init */
 	lib_last_stage_init();
