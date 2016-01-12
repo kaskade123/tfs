@@ -54,7 +54,8 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
 
     DeviceRelease(hdr);
 
-    sprintf(buf, "%d/%d mV  ", vol, pDev->normal_voltage);
+    sprintf(buf, "%d/%d mV (%.2f\%)  ", vol, pDev->normal_voltage,
+            ((float)abs(vol - pDev->normal_voltage) * 100) / (float)pDev->normal_voltage);
 }
 
 static void rh_print(char * buf)
