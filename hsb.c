@@ -10,6 +10,7 @@ typedef struct hsb_status
 	UINT64 pktRecv;
 	SEM_ID muxSem;
 	QJOB job;
+	UINT32 in_process;
 } HSB_STATUS_S;
 
 static HSB_STATUS_S * pStatus = NULL;
@@ -149,6 +150,7 @@ static void hsb_send(void * arg)
 	}
 	
 	assert(semGive(pStatus->muxSem) == OK);
+	pStatus->in_process = 0;
 }
 
 static int polling_task(void)
@@ -218,9 +220,13 @@ static void hsb_init(void)
 
 static void hsb_timer_hook(int arg)
 {
-	pStatus->job.func = hsb_send;
-	QJOB_SET_PRI(&pStatus->job, 20);
-    queue_add(&pStatus->job);
+	if (pStatus->in_process == 0)
+	{
+		pStatus->in_process = 1;
+		pStatus->job.func = hsb_send;
+		QJOB_SET_PRI(&pStatus->job, 20);
+		queue_add(&pStatus->job);
+	}
 }
 
 static void hsb_start(void)

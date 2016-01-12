@@ -20,6 +20,7 @@ typedef struct eth_status
 	INT32 	timerFd;				/* Timer Handler */
 	SEM_ID 	muxSem;					/* Semaphore */
 	QJOB 	job;					/* job queue */
+	UINT32 	in_process;
 }ETH_STATUS_S;
 
 static ETH_STATUS_S * pStatus = NULL;
@@ -87,6 +88,8 @@ static void eth_send_task(void * arg)
 	}
 	
 	assert(semGive(pStatus->muxSem) == OK);
+	
+	pStatus->in_process = 0;
 }
 
 static int eth_polling_task(void)
@@ -165,9 +168,13 @@ static void eth_init(void)
 
 static void eth_timer_hook(int arg)
 {
-	pStatus->job.func = eth_send_task;
-	QJOB_SET_PRI(&pStatus->job, 20);
-	queue_add(&pStatus->job);
+	if (pStatus->in_process == 0)
+	{
+		pStatus->in_process = 1;
+		pStatus->job.func = eth_send_task;
+		QJOB_SET_PRI(&pStatus->job, 20);
+		queue_add(&pStatus->job);
+	}
 }
 
 static void eth_start(void)

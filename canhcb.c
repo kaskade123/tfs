@@ -16,6 +16,7 @@ typedef struct canhcb_status
 	UINT64 send_pkts;
 	UINT64 recv_pkts;
 	QJOB job;
+	UINT32 in_process;
 }CANHCB_STATUS_S;
 
 static CANHCB_STATUS_S * pStatus = NULL;
@@ -140,26 +141,30 @@ static void canhcb_send_task(void * arg)
 	/* Send one packet to ourselves */
 	pStatus->SEND_PKT.DLC = CANHCB_PKT_LEN;
 	pStatus->SEND_PKT.DST = 0x0001 << addr_get();
-	do
+	ret = CANHCBPktSend(pStatus->canhcbFd, &pStatus->SEND_PKT);
+	if (ret == 0)
 	{
-		ret = CANHCBPktSend(pStatus->canhcbFd, &pStatus->SEND_PKT);
-	}while(ret == -EBUSY);
-	
-	/* Do statics recording */
-	pStatus->send_pkts++;
-	
-	/* Trigger packet polling task
-	 *
-	 * Due to the packet loop back time, there is always one packet missing. 
-	 */
-	assert(semGive(pStatus->muxSem) == OK);
+		/* Do statics recording */
+		pStatus->send_pkts++;
+		
+		/* Trigger packet polling task
+		 *
+		 * Due to the packet loop back time, there is always one packet missing. 
+		 */
+		assert(semGive(pStatus->muxSem) == OK);
+	}
+	pStatus->in_process = 0;
 }
 
 static void canhcb_send(INT32 len)
 {
-	pStatus->job.func = canhcb_send_task;
-	QJOB_SET_PRI(&pStatus->job, 20);
-	queue_add(&pStatus->job);
+	if (pStatus->in_process == 0)
+	{
+		pStatus->in_process = 1;
+		pStatus->job.func = canhcb_send_task;
+		QJOB_SET_PRI(&pStatus->job, 20);
+		queue_add(&pStatus->job);
+	}
 }
 
 static void canhcb_start(void)
