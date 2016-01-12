@@ -86,11 +86,8 @@ static void hsb_send_pkt(void)
 {
 	hsb_spkt_display(pktBuf);
 
-    assert(EthernetSendPkt(hsbFd, pktBuf, pkt_len(pktBuf)) == 0);
-    
-    pktSend++;
-    
-    /* Due to packet loop time, there is always one packet missing */
+    if (EthernetSendPkt(hsbFd, pktBuf, pkt_len(pktBuf)) == 0)
+        pktSend++;
 }
 
 static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
