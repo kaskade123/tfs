@@ -61,7 +61,7 @@ static UINT32 pkt_len(void * arg)
 	return pHdr->DLC + sizeof(*pHdr);
 }
 
-static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT8 dlc)
+static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT16 dlc)
 {
 	HSB_SEND_HEADER * pHdr;
 	
