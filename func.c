@@ -59,7 +59,16 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
 
     sprintf(buf, "%d/%d mV(%.2f%%)  ", vol, pDev->normal_voltage, ratio);
     
-    if (ratio > 7)
+    if ((ratio > 7) && (pDev->normal_voltage != 24000))
+    {
+    	int hdr = light_get("green2");
+    	if (hdr >= 0)
+    	{
+    		LightOn(hdr);
+    		DeviceRelease(hdr);
+    	}
+    }
+    else if ((ratio > 15) && (pDev->normal_voltage == 24000))
     {
     	int hdr = light_get("green2");
     	if (hdr >= 0)
