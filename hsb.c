@@ -16,7 +16,7 @@ typedef struct hsb_status
 static HSB_STATUS_S * pStatus = NULL;
 
 #define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
-#define HSB_BW_LIMIT	40000000				/* BW limited to 40Mbps */
+#define HSB_BW_LIMIT	1000000					/* BW limited to 1Mbps */
 #define HSB_SFP_COUNT	25						/* SFP info count */
 #define HSB_PKT_LEN		(20+4+24*HSB_SFP_COUNT)	/* HSB Packet Length */
 #define HSB_PKT_LIMIT	8						/* HSB Packet sent in one time */

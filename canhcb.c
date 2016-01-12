@@ -23,7 +23,7 @@ static CANHCB_STATUS_S * pStatus = NULL;
 
 #define CANHCB_BUF_LEN			500		/* Packet DLC limit */
 #define CANHCB_PKT_LEN			300		/* 300 Bytes pkt */
-#define CANHCB_BW_LIMIT			1000000	/* 1Mbps */
+#define CANHCB_BW_LIMIT			10000	/* 10Kbps */
 #define CANHCB_TIMER_FREQ		(CANHCB_BW_LIMIT / 8 / CANHCB_PKT_LEN)
 
 #define CANHCB_POLLING_TASK_PRIORITY	40
