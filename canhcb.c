@@ -15,6 +15,7 @@ typedef struct canhcb_status
 	UINT32 coding_error;
 	UINT64 send_pkts;
 	UINT64 recv_pkts;
+	QJOB job;
 }CANHCB_STATUS_S;
 
 static CANHCB_STATUS_S * pStatus = NULL;
@@ -129,18 +130,15 @@ static void canhcb_init(void)
 	taskSpawn("tCANHCBPoll", CANHCB_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
-static void canhcb_send(INT32 len)
+static void canhcb_send_task(void * arg)
 {
 	INT32 ret;
 	
-	/* validate the packet length */
-	assert (len <= CANHCB_BUF_LEN);
-	
 	/* Randomize the packet data */
-	rand_range(pStatus->SEND_PKT.pkt_buf, len);
+	rand_range(pStatus->SEND_PKT.pkt_buf, CANHCB_PKT_LEN);
 	
 	/* Send one packet to ourselves */
-	pStatus->SEND_PKT.DLC = len;
+	pStatus->SEND_PKT.DLC = CANHCB_PKT_LEN;
 	pStatus->SEND_PKT.DST = 0x0001 << addr_get();
 	do
 	{
@@ -157,6 +155,13 @@ static void canhcb_send(INT32 len)
 	assert(semGive(pStatus->muxSem) == OK);
 }
 
+static void canhcb_send(INT32 len)
+{
+	pStatus->job.func = canhcb_send_task;
+	QJOB_SET_PRI(&pStatus->job, 20);
+	queue_add(&pStatus->job);
+}
+
 static void canhcb_start(void)
 {
 	/* Initialize canhcb */
@@ -167,7 +172,7 @@ static void canhcb_start(void)
 	 * pkts one second. */
 	assert(TimerDisable(pStatus->timerFd) == 0);
 	assert(TimerFreqSet(pStatus->timerFd, CANHCB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(pStatus->timerFd, canhcb_send, CANHCB_PKT_LEN) == 0);
+	assert(TimerISRSet(pStatus->timerFd, canhcb_send, 0) == 0);
 	assert(TimerEnable(pStatus->timerFd) == 0);
 }
 
@@ -180,7 +185,6 @@ static void canhcb_sender_suspend(void)
 	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
 	assert(semGive(pStatus->muxSem) == OK);
-	taskDelay(1);
 }
 
 static void canhcb_sender_resume(void)
