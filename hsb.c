@@ -227,6 +227,7 @@ static void hsb_sender_suspend(void)
 	
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(timerFd) == 0);
+	taskDelay(1);
 	assert(semGive(muxSem) == OK);
 }
 
