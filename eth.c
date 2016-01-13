@@ -4,7 +4,7 @@
 #define ETH_DEV_PREFIX	"eth"
 #define ETH_BUFFER_LEN	1600
 
-#define ETH_BW_LIMIT	100000		/* BW limited to 100Kbps */
+#define ETH_BW_LIMIT	10000000	/* BW limited to 10Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
 #define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN)
 
