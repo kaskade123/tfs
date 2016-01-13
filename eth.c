@@ -6,8 +6,7 @@
 
 #define ETH_BW_LIMIT	100000		/* BW limited to 100Kbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
-#define ETH_PKT_LIMIT	8			/* Send out packets in one time */
-#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN / ETH_PKT_LIMIT)
+#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN)
 
 typedef struct eth_status
 {
@@ -74,17 +73,14 @@ static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len)
 
 static void eth_send_task(void * arg)
 {
-	int i, j;
+	int i;
 	/* Send out one packet for each port */
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
-		for (j = 0; j < ETH_PKT_LIMIT; j++)
-		{
-			if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
-				pStatus->pktFail[i]++;
-			else
-				pStatus->pktSent[i]++;
-		}
+		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN))
+			pStatus->pktFail[i]++;
+		else
+			pStatus->pktSent[i]++;
 	}
 	
 	assert(semGive(pStatus->muxSem) == OK);

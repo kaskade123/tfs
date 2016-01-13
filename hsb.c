@@ -19,8 +19,7 @@ static HSB_STATUS_S * pStatus = NULL;
 #define HSB_BW_LIMIT	1000000					/* BW limited to 1Mbps */
 #define HSB_SFP_COUNT	25						/* SFP info count */
 #define HSB_PKT_LEN		(20+4+24*HSB_SFP_COUNT)	/* HSB Packet Length */
-#define HSB_PKT_LIMIT	8						/* HSB Packet sent in one time */
-#define HSB_TIMER_FREQ	(HSB_BW_LIMIT / 8 / HSB_PKT_LEN / HSB_PKT_LIMIT)
+#define HSB_TIMER_FREQ	(HSB_BW_LIMIT / 8 / HSB_PKT_LEN)
 
 #define HSB_POLLING_TASK_PRIORITY	40
 
@@ -132,22 +131,18 @@ static void hsb_cfg_ends(UINT8 addr)
 static void hsb_send(void * arg)
 {
 	UINT8 * dp;
-	int i;
 	
 	assert(pStatus->hsbInited == TRUE);
 	
-	for (i = 0; i < HSB_PKT_LIMIT; i++)
-	{
-		dp = hsb_send_prepare(3, addr_get(), 4 + 24 * HSB_SFP_COUNT);
-		assert(dp != NULL);
-		dp[0] = 0x51;	    					/* SFP */
-		dp[1] = rand();    						/* idx */
-		dp[2] = rand();    						/* idx */
-		dp[3] = HSB_SFP_COUNT;					/* count */
-		rand_range(dp+4, 24 * HSB_SFP_COUNT);	/* status */
-	
-		hsb_send_pkt();
-	}
+	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * HSB_SFP_COUNT);
+	assert(dp != NULL);
+	dp[0] = 0x51;	    					/* SFP */
+	dp[1] = rand();    						/* idx */
+	dp[2] = rand();    						/* idx */
+	dp[3] = HSB_SFP_COUNT;					/* count */
+	rand_range(dp+4, 24 * HSB_SFP_COUNT);	/* status */
+
+	hsb_send_pkt();
 	
 	assert(semGive(pStatus->muxSem) == OK);
 	pStatus->in_process = 0;
