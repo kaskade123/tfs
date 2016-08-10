@@ -269,28 +269,9 @@ ends:
     close(fd);
 }
 
-static int dummy_load_task(void)
-{
-	static UINT32 dummy = 0;
-    FOREVER
-    {
-        while(dummy < 0x800000)
-            dummy++;
-        dummy = 0;
-        taskDelay(8);
-    }
-}
-
 static void func_start(void)
 {
-#if 0
-	/* Spawn a dummy task if CPU board */
-	if (is_cpu())
-	{
-		assert (taskSpawn("tDummy", 255, 0, 0x200, dummy_load_task, 
-				0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
-	}
-#endif
+
 }
 
 static void func_show(char * buf)
