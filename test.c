@@ -38,7 +38,6 @@ static int test_start_entry(void)
 	lib_init();
 	
 	/* Register modules */
-	hsb_register();
 	canhcb_register();
     ion_register();
 	func_register();
