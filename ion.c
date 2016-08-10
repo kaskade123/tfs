@@ -1,19 +1,22 @@
 #include "lib.h"
 
-#define TEMP_ADDR		15	/* Only get the temp of IO that near PWR */
-#define IO_ADDR1		10
-#define IO_ADDR2		14
+#define IOM_NUM         16
 
-typedef struct iom_status
+typedef struct iom
 {
-	int ionFd;
-	ION_PKT_S RECV_PKT, SEND_PKT;
-	BOOL ionInited;
 	UINT32 RESETS;
 	INT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
+} IOM;
+
+typedef struct iom_status
+{
+	int ionFd;
+	BOOL ionInited;
+	ION_PKT_S RECV_PKT, SEND_PKT;
 	ION_COUNTER_S counter;
+	IOM IOM[IOM_NUM];
 }IOM_STATUS_S;
 
 static IOM_STATUS_S * pStatus = NULL;
@@ -38,14 +41,14 @@ static void ion_pkt_display(void * arg, char * desc)
 static void ion_pkt_display(void * arg, char * desc) {}
 #endif
 
-static void ion_send_statistics_check(void)
+static void ion_send_statistics_check(uint32_t dst)
 {
 	assert(pStatus->ionInited);
 	
 	/* 0x02 0x40 CRC */
 	pStatus->SEND_PKT.PRI = 6;
 	pStatus->SEND_PKT.RP = 0;
-	pStatus->SEND_PKT.DST = TEMP_ADDR;
+	pStatus->SEND_PKT.DST = dst;
 	pStatus->SEND_PKT.DLC = 4;
 	pStatus->SEND_PKT.pkt_buf[0] = 3;
 	pStatus->SEND_PKT.pkt_buf[1] = 0x49;
@@ -56,33 +59,34 @@ static void ion_send_statistics_check(void)
 	
 	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
 	
-	pStatus->pktSent++;
+	pStatus->IOM[dst].pktSent++;
 }
 
-static void ion_decode_statistics_check(void)
+static void ion_decode_statistics_check(uint32_t src)
 {
 	if (pStatus->RECV_PKT.DLC < 61)
 		return;
 	
-	pStatus->pktRecv++;
+	pStatus->IOM[src].pktRecv++;
 	
-	memcpy(&pStatus->RESETS, pStatus->RECV_PKT.pkt_buf + 56, 4);
+	memcpy(&pStatus->IOM[src].RESETS, pStatus->RECV_PKT.pkt_buf + 56, 4);
 	
 	/* little endian to big endian convert */
-	pStatus->RESETS = (pStatus->RESETS & 0x000000FF) << 24 ||
-					  (pStatus->RESETS & 0x0000FF00) << 8  ||
-					  (pStatus->RESETS & 0x00FF0000) >> 8  ||
-					  (pStatus->RESETS & 0xFF000000) >> 24;
+	pStatus->IOM[src].RESETS =
+	        (pStatus->IOM[src].RESETS & 0x000000FF) << 24 ||
+			(pStatus->IOM[src].RESETS & 0x0000FF00) << 8  ||
+			(pStatus->IOM[src].RESETS & 0x00FF0000) >> 8  ||
+			(pStatus->IOM[src].RESETS & 0xFF000000) >> 24;
 }
 
-static void ion_send_temp_check(void)
+static void ion_send_temp_check(uint32_t dst)
 {
 	assert(pStatus->ionInited);
 	
 	/* 0x02 0x40 CRC */
 	pStatus->SEND_PKT.PRI = 6;
 	pStatus->SEND_PKT.RP = 0;
-	pStatus->SEND_PKT.DST = TEMP_ADDR;
+	pStatus->SEND_PKT.DST = dst;
 	pStatus->SEND_PKT.DLC = 3;
 	pStatus->SEND_PKT.pkt_buf[0] = 2;
 	pStatus->SEND_PKT.pkt_buf[1] = 0x63;
@@ -92,18 +96,18 @@ static void ion_send_temp_check(void)
 	
 	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
 	
-	pStatus->pktSent++;
+	pStatus->IOM[dst].pktSent++;
 }
 
-static void ion_decode_temp_check(void)
+static void ion_decode_temp_check(uint32_t src)
 {
 	if (pStatus->RECV_PKT.DLC < 4)
 		return;
-	pStatus->pktRecv++;
-	pStatus->TEMPERATURE = pStatus->RECV_PKT.pkt_buf[3];
+	pStatus->IOM[src].pktRecv++;
+	pStatus->IOM[src].TEMPERATURE = pStatus->RECV_PKT.pkt_buf[3];
 }
 
-static void ion_decode_di_check(void)
+static void ion_decode_di_check(uint32_t src)
 {
     
 }
@@ -173,13 +177,13 @@ static int polling_task(void)
 				switch(pStatus->RECV_PKT.pkt_buf[1])
 				{
 				case 0x05:
-					ion_decode_statistics_check();
+					ion_decode_statistics_check(pStatus->RECV_PKT.SRC);
 					break;
 				case 0x16:
-					ion_decode_temp_check();
+					ion_decode_temp_check(pStatus->RECV_PKT.SRC);
 					break;
 				case 0x10:
-				    ion_decode_di_check();
+				    ion_decode_di_check(pStatus->RECV_PKT.SRC);
 				default:
 					break;
 				}
@@ -228,24 +232,14 @@ static int ion_check_task(void)
 	static unsigned int counter = 0;
 	FOREVER
 	{
-		ion_send_temp_check();
-		if (addr_get() == 2)
-		{
-			if (counter % 2)
-			{
-				ion_send_do_active(IO_ADDR1);
-				ion_send_do_active(IO_ADDR2);
-			}
-			else
-			{
-				ion_send_do_deactive(IO_ADDR1);
-				ion_send_do_deactive(IO_ADDR2);
-			}
-		}
+	    int i;
+	    for(i = 4; i <= 12; i++)
+	        ion_send_temp_check(i);
 		taskDelay(sysClkRateGet());
 		if (counter ++ > 30)
 		{
-			ion_send_statistics_check();
+		    for(i = 4; i <= 12; i++)
+		        ion_send_statistics_check(i);
 			counter = 0;
 		}
 	}
@@ -260,35 +254,46 @@ static void ion_start(void)
 	taskSpawn("tIONChecker", 253, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
+static void iom_show(char * buf, int i)
+{
+    sprintf(buf, "\n"
+            "--------- %d ---------\n"
+            "Resets After Power Up  : %u\n"
+            "Temperature            : %u\n"
+            "Packet Sent            : %u\n"
+            "Packet Recv            : %u\n"
+            "Packet Missing         : %u\n",
+            i,
+            pStatus->IOM[i].RESETS,
+            pStatus->IOM[i].TEMPERATURE,
+            pStatus->IOM[i].pktSent,
+            pStatus->IOM[i].pktRecv,
+            pStatus->IOM[i].pktSent - pStatus->IOM[i].pktRecv
+            );
+}
+
 static void ion_show(char * buf)
 {
+    int i;
 	sprintf(buf, "\n"
 			"*********** IOM ***********\n"
-			"Resets After Power Up  : %u\n"
-			"Temperature            : %u\n"
 			"ION Ack Error          : %u\n"
 			"ION Bit Error          : %u\n"
 			"ION CRC Error          : %u\n"
 			"ION Format Error       : %u\n"
 			"ION In-Continuty Error : %u\n"
 			"ION Send Error         : %u\n"
-			"ION Stuff Error        : %u\n"
-			"Packet Sent            : %u\n"
-			"Packet Recv            : %u\n"
-			"Packet Missing         : %u\n",
-			pStatus->RESETS,
-			pStatus->TEMPERATURE,
+			"ION Stuff Error        : %u\n",
 			pStatus->counter.ACK_ERROR,
 			pStatus->counter.BIT_ERROR,
 			pStatus->counter.CRC_ERROR,
 			pStatus->counter.FORMAT_ERROR,
 			pStatus->counter.INCON_ERROR,
 			pStatus->counter.SEND_ERROR,
-			pStatus->counter.STUFF_ERROR,
-			pStatus->pktSent,
-			pStatus->pktRecv,
-			pStatus->pktSent - pStatus->pktRecv
+			pStatus->counter.STUFF_ERROR
 			);
+	for (i = 4; i <= 12; i++)
+	    iom_show(buf + strlen(buf), i);
 }
 
 MODULE_REGISTER(ion);
