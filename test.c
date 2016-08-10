@@ -40,8 +40,7 @@ static int test_start_entry(void)
 	/* Register modules */
 	hsb_register();
 	canhcb_register();
-	if (is_cpu())
-		ion_register();
+    ion_register();
 	func_register();
 	eth_register();
 	
