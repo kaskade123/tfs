@@ -355,7 +355,7 @@ int is_cpu(void)
 {
 	extern char * get_env(char *);
 	
-	if ((strcmp(get_env("board"), "N1101A") == 0) || (strcmp(get_env("board"), "cpu") == 0))
+	if (strncmp(get_env("board"), "NPS-CPU", strlen("NPS-CPU")) == 0)
 		return 1;
 	else
 		return 0;
