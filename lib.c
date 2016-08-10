@@ -25,16 +25,11 @@ static void ip_setup(void)
 {
 	int fd = ethdev_get("backplane");
 	char ip_addr[16];
-	struct in_addr ipAddr;
-	IMPORT WDB_END_PKT_DEV *pEndPktDev;
 	
 	assert(fd >= 0);
 	
 	sprintf(ip_addr, "192.168.0.%d", 100 + addr_get());
 	assert(EthernetIPSet(fd, ip_addr) == 0);
-	
-	ipAddr.s_addr = inet_addr(ip_addr);
-	pEndPktDev->ipAddr = ipAddr;
 }
 
 /* Blink in 1Hz */
