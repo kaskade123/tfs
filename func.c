@@ -208,7 +208,7 @@ static void type_print(UINT16 type, char * buf, FUNCPTR _print)
 		sprintf(buf + strlen(buf), "\n");
 }
 
-static void fs_test(char * path, char * str)
+static void fs_test(const char * path, char * str)
 {
     int fd;
     char filename[32];
