@@ -103,6 +103,11 @@ static void ion_decode_temp_check(void)
 	pStatus->TEMPERATURE = pStatus->RECV_PKT.pkt_buf[3];
 }
 
+static void ion_decode_di_check(void)
+{
+    
+}
+
 static void ion_send_do_active(UINT8 addr)
 {
 	assert(pStatus->ionInited);
@@ -173,6 +178,8 @@ static int polling_task(void)
 				case 0x16:
 					ion_decode_temp_check();
 					break;
+				case 0x10:
+				    ion_decode_di_check();
 				default:
 					break;
 				}
