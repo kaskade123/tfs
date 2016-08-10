@@ -10,7 +10,7 @@ typedef struct iom_status
 	ION_PKT_S RECV_PKT, SEND_PKT;
 	BOOL ionInited;
 	UINT32 RESETS;
-	UINT32 TEMPERATURE;
+	INT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
 	ION_COUNTER_S counter;
