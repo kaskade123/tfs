@@ -102,7 +102,7 @@ static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
 	HSB_RECV_HEADER * pHdr = (HSB_RECV_HEADER *)buf;
 	
 	/* Only acknowledge the packets sent from ourselves */
-	if (pHdr->SRC == addr_get() && buf[sizeof(*pHdr)] == 0x51)
+	if (pHdr->SRC == addr_get() && buf[sizeof(*pHdr)] == 0x51 && buf[sizeof(*pHdr) + 3] == HSB_SFP_COUNT)
 	{
 		pStatus->pktRecv++;
 	}
