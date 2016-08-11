@@ -21,6 +21,7 @@ typedef struct iom_status
 	ION_PKT_S RECV_PKT, SEND_PKT;
 	ION_COUNTER_S counter;
 	IOM IOM[IOM_NUM];
+	UINT8 suspend;
 }IOM_STATUS_S;
 
 static IOM_STATUS_S * pStatus = NULL;
@@ -263,25 +264,31 @@ static void ion_init(void)
 static int ion_check_task(void)
 {
 	static unsigned int counter = 0;
+
 	FOREVER
 	{
 	    int i;
-	    for(i = 0; i < IOM_NUM; i++)
+	    if (!pStatus->suspend)
 	    {
-	        if (pStatus->IOM[i].alive)
-	            ion_send_temp_check(i);
-	    }
-		taskDelay(sysClkRateGet());
-		if (counter ++ > 30)
-		{
-	        for(i = 0; i < IOM_NUM; i++)
-	        {
-	            if (pStatus->IOM[i].alive)
-	                ion_send_statistics_check(i);
-	        }
+            for(i = 0; i < IOM_NUM; i++)
+            {
+                if (pStatus->IOM[i].alive)
+                    ion_send_temp_check(i);
+            }
+            taskDelay(sysClkRateGet());
+            if (counter ++ > 30)
+            {
+                for(i = 0; i < IOM_NUM; i++)
+                {
+                    if (pStatus->IOM[i].alive)
+                        ion_send_statistics_check(i);
+                }
 
-			counter = 0;
-		}
+                counter = 0;
+            }
+	    }
+	    else
+	        taskDelay(1);
 	}
 }
 
@@ -333,6 +340,9 @@ static void iom_show(char * buf, int i)
 static void ion_show(char * buf)
 {
     int i;
+    pStatus->suspend = 1;
+    taskDelay(1);
+    
 	sprintf(buf, "\n"
 			"*********** IOM ***********\n"
 			"ION Ack Error          : %u\n"
@@ -355,6 +365,8 @@ static void ion_show(char * buf)
 	    if (pStatus->IOM[i].alive)
 	        iom_show(buf + strlen(buf), i);
 	}
+	
+	pStatus->suspend = 0;
 }
 
 MODULE_REGISTER(ion);
