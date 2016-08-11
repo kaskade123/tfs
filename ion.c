@@ -8,6 +8,7 @@ typedef struct iom
 	INT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
+	UINT32 di_recved;
 	UINT8 DI[8];    /* At most 64 Di */
 } IOM;
 
@@ -111,6 +112,7 @@ static void ion_decode_temp_check(uint32_t src)
 static void ion_decode_di_check(uint32_t src)
 {
     memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
+    pStatus->IOM[src].di_recved = 1;
 }
 
 static void ion_send_do_active(UINT8 addr)
@@ -285,7 +287,8 @@ static void iom_show(char * buf, int i)
             pStatus->IOM[i].pktRecv,
             pStatus->IOM[i].pktSent - pStatus->IOM[i].pktRecv
             );
-    di_show(buf + strlen(buf), pStatus->IOM[i].DI);
+    if (pStatus->IOM[i].di_recved)
+        di_show(buf + strlen(buf), pStatus->IOM[i].DI);
 }
 
 static void ion_show(char * buf)
