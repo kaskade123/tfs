@@ -174,8 +174,7 @@ static int polling_task(void)
 		{
 			/* Receive the packet that sent to us */
 			ret = IONPktPoll(pStatus->ionFd);
-			if (((ret == 0) || (ret == -ENOSPC)) &&
-					(pStatus->RECV_PKT.DST == addr_get()))
+			if ((ret == 0) || (ret == -ENOSPC))
 			{
 				switch(pStatus->RECV_PKT.pkt_buf[1])
 				{
