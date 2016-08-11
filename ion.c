@@ -325,13 +325,15 @@ static void iom_show(char * buf, int i)
             "Temperature            : %u\n"
             "Status                 : %x\n"
             "Packet Sent            : %u\n"
-            "Packet Recv            : %u\n",
+            "Packet Recv            : %u\n"
+            "Packet Missing         : %u\n",
             i,
             pStatus->IOM[i].RESETS,
             pStatus->IOM[i].TEMPERATURE,
             pStatus->IOM[i].stat,
             pStatus->IOM[i].pktSent,
-            pStatus->IOM[i].pktRecv
+            pStatus->IOM[i].pktRecv,
+            pStatus->IOM[i].pktSent - pStatus->IOM[i].pktRecv
             );
     if (pStatus->IOM[i].di_recved)
         di_show(buf + strlen(buf), pStatus->IOM[i].DI);
