@@ -184,7 +184,8 @@ static int polling_task(void)
 					ion_decode_temp_check(pStatus->RECV_PKT.SRC);
 					break;
 				case 0x10:
-				    ion_decode_di_check(pStatus->RECV_PKT.SRC);
+				    if (pStatus->RECV_PKT.RP == 0)
+				        ion_decode_di_check(pStatus->RECV_PKT.SRC);
 				default:
 					break;
 				}
