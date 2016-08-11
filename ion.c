@@ -121,6 +121,24 @@ static void ion_heartbeat_check(uint32_t src)
     pStatus->IOM[src].stat = pStatus->RECV_PKT.pkt_buf[2];
 }
 
+static void ion_send_start(void)
+{
+    assert(pStatus->ionInited);
+    
+    /* 0x01 0x41 CRC */
+    pStatus->SEND_PKT.PRI = 1;
+    pStatus->SEND_PKT.RP = 0;
+    pStatus->SEND_PKT.DST = 0x3E;
+    pStatus->SEND_PKT.DLC = 3;
+    pStatus->SEND_PKT.pkt_buf[0] = 1;       /* LEN */
+    pStatus->SEND_PKT.pkt_buf[1] = 0x41;    /* TYPE */
+    pStatus->SEND_PKT.pkt_buf[2] = 0x00;    /* CRC */
+    
+    ion_pkt_display(&pStatus->SEND_PKT, "Send");
+    
+    assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0); 
+}
+
 static void ion_send_do_active(UINT8 addr)
 {
 	assert(pStatus->ionInited);
@@ -262,6 +280,9 @@ static void ion_start(void)
 {
 	/* Basic ION initialization */
 	ion_init();
+	
+	/* Ask IO modules to start */
+	ion_send_start();
 	
 	/* Spawn a task for ion send */
 	taskSpawn("tIONChecker", 253, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
