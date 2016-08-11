@@ -8,6 +8,7 @@ typedef struct iom
 	INT32 TEMPERATURE;
 	UINT32 pktSent;
 	UINT32 pktRecv;
+	UINT8 DI[8];    /* At most 64 Di */
 } IOM;
 
 typedef struct iom_status
@@ -109,7 +110,7 @@ static void ion_decode_temp_check(uint32_t src)
 
 static void ion_decode_di_check(uint32_t src)
 {
-    
+    memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
 }
 
 static void ion_send_do_active(UINT8 addr)
@@ -254,6 +255,19 @@ static void ion_start(void)
 	taskSpawn("tIONChecker", 253, 0, 0x40000, ion_check_task, 0,0,0,0,0,0,0,0,0,0);
 }
 
+static void di_show(char * buf, UINT8 DI[8])
+{
+    int i, j;
+    for (i = 0; i < 8; i++)
+    {
+        for (j = 0; j < 8; j++)
+            sprintf(buf + strlen(buf),
+                    "%1d ",
+                    (DI[i] & (0x1 << j)) != 0
+                    );
+    }
+}
+
 static void iom_show(char * buf, int i)
 {
     sprintf(buf, "\n"
@@ -270,6 +284,7 @@ static void iom_show(char * buf, int i)
             pStatus->IOM[i].pktRecv,
             pStatus->IOM[i].pktSent - pStatus->IOM[i].pktRecv
             );
+    di_show(buf + strlen(buf), pStatus->IOM[i].DI);
 }
 
 static void ion_show(char * buf)
@@ -297,4 +312,3 @@ static void ion_show(char * buf)
 }
 
 MODULE_REGISTER(ion);
-
