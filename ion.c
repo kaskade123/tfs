@@ -315,6 +315,7 @@ static void di_show(char * buf, UINT8 DI[8])
                     (DI[i] & (0x1 << j)) != 0
                     );
     }
+    sprintf(buf + strlen(buf), "\n");
 }
 
 static void iom_show(char * buf, int i)
