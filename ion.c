@@ -11,6 +11,7 @@ typedef struct iom
 	UINT32 di_recved;
 	UINT8 DI[8];    /* At most 64 Di */
 	UINT8 stat;
+	UINT8 alive;
 } IOM;
 
 typedef struct iom_status
@@ -119,6 +120,7 @@ static void ion_decode_di_check(uint32_t src)
 static void ion_heartbeat_check(uint32_t src)
 {
     pStatus->IOM[src].stat = pStatus->RECV_PKT.pkt_buf[2];
+    pStatus->IOM[src].alive = 1;
 }
 
 static void ion_send_start(void)
@@ -264,13 +266,20 @@ static int ion_check_task(void)
 	FOREVER
 	{
 	    int i;
-	    for(i = 4; i <= 12; i++)
-	        ion_send_temp_check(i);
+	    for(i = 0; i < IOM_NUM; i++)
+	    {
+	        if (pStatus->IOM[i].alive)
+	            ion_send_temp_check(i);
+	    }
 		taskDelay(sysClkRateGet());
 		if (counter ++ > 30)
 		{
-		    for(i = 4; i <= 12; i++)
-		        ion_send_statistics_check(i);
+	        for(i = 0; i < IOM_NUM; i++)
+	        {
+	            if (pStatus->IOM[i].alive)
+	                ion_send_statistics_check(i);
+	        }
+
 			counter = 0;
 		}
 	}
@@ -330,7 +339,7 @@ static void ion_show(char * buf)
 			"ION Bit Error          : %u\n"
 			"ION CRC Error          : %u\n"
 			"ION Format Error       : %u\n"
-			"ION In-Continuty Error : %u\n"
+	        "ION In-Continuty Error : %u\n"
 			"ION Send Error         : %u\n"
 			"ION Stuff Error        : %u\n",
 			pStatus->counter.ACK_ERROR,
@@ -341,8 +350,11 @@ static void ion_show(char * buf)
 			pStatus->counter.SEND_ERROR,
 			pStatus->counter.STUFF_ERROR
 			);
-	for (i = 4; i <= 12; i++)
-	    iom_show(buf + strlen(buf), i);
+	for(i = 0; i < IOM_NUM; i++)
+	{
+	    if (pStatus->IOM[i].alive)
+	        iom_show(buf + strlen(buf), i);
+	}
 }
 
 MODULE_REGISTER(ion);
