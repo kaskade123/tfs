@@ -10,6 +10,7 @@ typedef struct iom
 	UINT32 pktRecv;
 	UINT32 di_recved;
 	UINT8 DI[8];    /* At most 64 Di */
+	UINT8 stat;
 } IOM;
 
 typedef struct iom_status
@@ -113,6 +114,13 @@ static void ion_decode_di_check(uint32_t src)
 {
     memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
     pStatus->IOM[src].di_recved = 1;
+    pStatus->IOM[src].pktRecv++;
+}
+
+static void ion_heartbeat_check(uint32_t src)
+{
+    pStatus->IOM[src].stat = pStatus->RECV_PKT.pkt_buf[2];
+    pStatus->IOM[src].pktRecv++;
 }
 
 static void ion_send_do_active(UINT8 addr)
@@ -187,6 +195,10 @@ static int polling_task(void)
 				case 0x10:
 				    if (pStatus->RECV_PKT.RP == 0)
 				        ion_decode_di_check(pStatus->RECV_PKT.SRC);
+				    break;
+				case 0x09:
+				    ion_heartbeat_check(pStatus->RECV_PKT.SRC);
+				    break;
 				default:
 					break;
 				}
@@ -276,15 +288,15 @@ static void iom_show(char * buf, int i)
             "--------- %d ---------\n"
             "Resets After Power Up  : %u\n"
             "Temperature            : %u\n"
+            "Status                 : %x\n"
             "Packet Sent            : %u\n"
-            "Packet Recv            : %u\n"
-            "Packet Missing         : %u\n",
+            "Packet Recv            : %u\n",
             i,
             pStatus->IOM[i].RESETS,
             pStatus->IOM[i].TEMPERATURE,
+            pStatus->IOM[i].stat,
             pStatus->IOM[i].pktSent,
-            pStatus->IOM[i].pktRecv,
-            pStatus->IOM[i].pktSent - pStatus->IOM[i].pktRecv
+            pStatus->IOM[i].pktRecv
             );
     if (pStatus->IOM[i].di_recved)
         di_show(buf + strlen(buf), pStatus->IOM[i].DI);
