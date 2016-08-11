@@ -1,6 +1,6 @@
 #include "lib.h"
 
-#define IOM_NUM         16
+#define IOM_NUM         32
 
 typedef struct iom
 {
