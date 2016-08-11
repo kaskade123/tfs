@@ -114,13 +114,11 @@ static void ion_decode_di_check(uint32_t src)
 {
     memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
     pStatus->IOM[src].di_recved = 1;
-    pStatus->IOM[src].pktRecv++;
 }
 
 static void ion_heartbeat_check(uint32_t src)
 {
     pStatus->IOM[src].stat = pStatus->RECV_PKT.pkt_buf[2];
-    pStatus->IOM[src].pktRecv++;
 }
 
 static void ion_send_do_active(UINT8 addr)
