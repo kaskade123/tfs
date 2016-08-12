@@ -132,7 +132,7 @@ static void ion_decode_di_check(uint32_t src)
                 if (old_bit != new_bit)
                     sprintf(di_change_buf + strlen(di_change_buf),
                             "DI %d : %d -> %d\n",
-                            8 * i + j, old_bit, new_bit);
+                            8 * i + j, old_bit != 0, new_bit != 0);
             }
         }
         logMsg(di_change_buf, 0,0,0,0,0,0);
