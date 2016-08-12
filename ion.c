@@ -330,13 +330,16 @@ static void di_show(char * buf, UINT8 DI[8])
     int i, j;
     for (i = 0; i < 8; i++)
     {
+        sprintf(buf + strlen(buf),
+                "DI %02d - %02d : ",
+                i * 8 + 1, (i + 1) * 8);
         for (j = 0; j < 8; j++)
             sprintf(buf + strlen(buf),
                     "%1d ",
                     (DI[i] & (0x1 << j)) != 0
                     );
+        sprintf(buf + strlen(buf), "\n");
     }
-    sprintf(buf + strlen(buf), "\n");
 }
 
 static void iom_show(char * buf, int i)
