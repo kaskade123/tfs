@@ -33,7 +33,7 @@ static void lib_show_start(int delay)
 	taskSpawn("tShow", 254, VX_SPE_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
-static int test_start_entry(void)
+static int test_start_entry(int delay)
 {	
 	/* initialize lib */
 	lib_init();
@@ -64,16 +64,16 @@ static int test_start_entry(void)
 	assert(displaySem);
 	
 	/* show start */
-	lib_show_start(5);
+	lib_show_start(delay);
 	
 	/* Last stage lib init */
 	lib_last_stage_init();
 	return 0;
 }
 
-void test_start(void)
+void test_start(int delay)
 {
-	taskSpawn("tStart", 255, VX_SPE_TASK, 0x100000, test_start_entry, 0,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tStart", 255, VX_SPE_TASK, 0x100000, test_start_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
 void test_show(void)
