@@ -5,6 +5,7 @@ MODULE_DECLARE(hsb);
 MODULE_DECLARE(ion);
 MODULE_DECLARE(func);
 MODULE_DECLARE(eth);
+MODULE_DECLARE(sv);
 
 static char print_buf[2048];
 static SEM_ID displaySem;
@@ -43,6 +44,7 @@ static int test_start_entry(void)
     ion_register();
 	func_register();
 	eth_register();
+	sv_register();
 	
 	/* delay for some time */
 	taskDelay(500);
