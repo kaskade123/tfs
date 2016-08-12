@@ -44,9 +44,11 @@ static int test_start_entry(void)
 #endif
 	canhcb_register();
     ion_register();
+	if (is_hmi())
+	    eth_register();
+	if (is_cpu())
+	    sv_register();
 	func_register();
-	eth_register();
-	sv_register();
 	
 	/* delay for some time */
 	taskDelay(500);
