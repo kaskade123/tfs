@@ -56,6 +56,7 @@ extern void rand_range(UINT8 * ptr, UINT32 size);
 extern int is_cpu(void);
 extern int is_hmi(void);
 extern STATUS queue_add(QJOB * pJob);
+void calc_fletcher32(unsigned char *data, unsigned n_bytes, unsigned * cksum);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\

@@ -332,3 +332,31 @@ int is_hmi(void)
 {
 	return !is_cpu();
 }
+
+void calc_fletcher32(unsigned char *data, unsigned n_bytes,
+        unsigned * cksum)
+{
+    unsigned short * d = (unsigned short *)data;
+    unsigned n_words = n_bytes / 2;
+    unsigned sum1 = 0xffff, sum2 = 0xffff;
+    unsigned tlen;
+
+    if (n_bytes % 2)
+        return;
+
+    while(n_words)
+    {
+        tlen = n_words >= 359 ? 359 : n_words;
+        n_words -= tlen;
+        do
+        {
+            sum2 += sum1 += *d++;
+        }while(--tlen);
+        sum1 = (sum1 & 0xffff) + (sum1 >> 16);
+        sum2 = (sum2 & 0xffff) + (sum2 >> 16);
+    }
+    sum1 = (sum1 & 0xffff) + (sum1 >> 16);
+    sum2 = (sum2 & 0xffff) + (sum2 >> 16);
+
+    *cksum = sum2 << 16 | sum1;
+}
