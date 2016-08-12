@@ -171,16 +171,17 @@ static void ion_send_do_active(UINT8 addr)
 	pStatus->SEND_PKT.PRI = 1;
 	pStatus->SEND_PKT.RP = 0;
 	pStatus->SEND_PKT.DST = addr;
-	pStatus->SEND_PKT.DLC = 9;
+	pStatus->SEND_PKT.DLC = 10;
 	pStatus->SEND_PKT.pkt_buf[0] = 8;		/* LEN */
 	pStatus->SEND_PKT.pkt_buf[1] = 0x5A;	/* TYPE */
-	pStatus->SEND_PKT.pkt_buf[2] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[3] = 0xFF;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[4] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[5] = 0xFF;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[6] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[7] = 0xFF;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[8] = 0x00;	/* CRC */
+	pStatus->SEND_PKT.pkt_buf[2] = 0x00;	/* SEQ */
+	pStatus->SEND_PKT.pkt_buf[3] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[4] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[5] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[6] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[7] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[8] = 0xFF;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[9] = 0x00;	/* CRC */
 	
 	ion_pkt_display(&pStatus->SEND_PKT, "Send");
 	
@@ -195,20 +196,31 @@ static void ion_send_do_deactive(UINT8 addr)
 	pStatus->SEND_PKT.PRI = 1;
 	pStatus->SEND_PKT.RP = 0;
 	pStatus->SEND_PKT.DST = addr;
-	pStatus->SEND_PKT.DLC = 9;
+	pStatus->SEND_PKT.DLC = 10;
 	pStatus->SEND_PKT.pkt_buf[0] = 8;		/* LEN */
 	pStatus->SEND_PKT.pkt_buf[1] = 0x5A;	/* TYPE */
-	pStatus->SEND_PKT.pkt_buf[2] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[3] = 0x00;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[4] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[5] = 0x00;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[6] = 0xFF;	/* MSK */
-	pStatus->SEND_PKT.pkt_buf[7] = 0x00;	/* DO */
-	pStatus->SEND_PKT.pkt_buf[8] = 0x00;	/* CRC */
-	
+	pStatus->SEND_PKT.pkt_buf[2] = 0x00;	/* SEQ */
+	pStatus->SEND_PKT.pkt_buf[3] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[4] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[5] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[6] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[7] = 0xFF;	/* MSK */
+	pStatus->SEND_PKT.pkt_buf[8] = 0x00;	/* DO */
+	pStatus->SEND_PKT.pkt_buf[9] = 0x00;	/* CRC */
+
 	ion_pkt_display(&pStatus->SEND_PKT, "Send");
 	
 	assert(IONPktSend(pStatus->ionFd, &pStatus->SEND_PKT) == 0);
+}
+
+void ion_do_test(UINT8 addr, UINT8 active_time)
+{
+    if (active_time == 0)
+        active_time = 3;
+    
+    ion_send_do_active(addr);
+    taskDelay(active_time * sysClkRateGet());
+    ion_send_do_deactive(addr);
 }
 
 static int polling_task(void)
