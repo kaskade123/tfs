@@ -114,8 +114,29 @@ static void ion_decode_temp_check(uint32_t src)
 
 static void ion_decode_di_check(uint32_t src)
 {
+    UINT8 old_id[8], old_bit, new_bit;
+    char di_change_buf[128] = {0};
+    memcpy(old_id, pStatus->IOM[src].DI, 8);
     memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
     pStatus->IOM[src].di_recved = 1;
+    if (memcmp(old_id, pStatus->IOM[src].DI, 8))
+    {
+        /* DI changed */
+        int i, j;
+        for (i = 0; i < 8; i++)
+        {
+            for (j = 0; j < 8; j++)
+            {
+                old_bit = old_id[i] & (0x1 << j);
+                new_bit = pStatus->IOM[src].DI[i] & (0x1 << j);
+                if (old_bit != new_bit)
+                    sprintf(di_change_buf + strlen(di_change_buf),
+                            "DI %d : %d -> %d\n",
+                            8 * i + j, old_bit, new_bit);
+            }
+        }
+        logMsg(di_change_buf, 0,0,0,0,0,0);
+    }
 }
 
 static void ion_heartbeat_check(uint32_t src)
