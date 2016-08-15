@@ -216,11 +216,17 @@ static void ion_send_do_deactive(UINT8 addr)
 void ion_do_test(UINT8 addr, UINT8 active_time)
 {
     if (active_time == 0)
-        active_time = 3;
+        active_time = 10;
+    
+    assert (status_chg_verify(SAC_STATUS_QD, SAC_STATUS_QD_RET, 1) == 0);
+    assert (status_chg_verify(SAC_STATUS_SQD, SAC_STATUS_SQD_RET, 1) == 0);
     
     ion_send_do_active(addr);
     taskDelay(active_time * sysClkRateGet());
     ion_send_do_deactive(addr);
+
+    assert (status_chg_verify(SAC_STATUS_QD, SAC_STATUS_QD_RET, 0) == 0);
+    assert (status_chg_verify(SAC_STATUS_SQD, SAC_STATUS_SQD_RET, 0) == 0);
 }
 
 static int polling_task(void)
