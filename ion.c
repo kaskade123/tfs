@@ -131,7 +131,7 @@ static void ion_decode_di_check(uint32_t src)
                 new_bit = pStatus->IOM[src].DI[i] & (0x1 << j);
                 if (old_bit != new_bit)
                     sprintf(di_change_buf + strlen(di_change_buf),
-                            "DI %d : %d -> %d\n",
+                            "DI(%d) %d : %d -> %d\n", src,
                             8 * i + j + 1, old_bit != 0, new_bit != 0);
             }
         }
