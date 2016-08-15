@@ -57,6 +57,7 @@ extern int is_cpu(void);
 extern int is_hmi(void);
 extern STATUS queue_add(QJOB * pJob);
 void calc_fletcher32(unsigned char *data, unsigned n_bytes, unsigned * cksum);
+int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\
