@@ -197,6 +197,91 @@ int ethdev_get(const char * name)
 	return -ENOENT;
 }
 
+int status_get(UINT32 status_type)
+{
+    SAC_DEV_HEADER_ID pDev = NULL;
+
+    do
+    {
+        pDev = DescriptionGetByType(SAC_DEVICE_TYPE_STATUS, pDev);
+        if (pDev)
+        {
+            STATUS_DEV_S *pSDev = (STATUS_DEV_S *)pDev;
+            if (pSDev->type == status_type)
+                return DeviceRequest(pDev);
+        }
+    }while(pDev);
+    
+    return -ENOENT;
+}
+
+int status_chg(UINT32 status_type, UINT32 assert)
+{
+    int fd = status_get(status_type);
+    int ret;
+    
+    if (fd < 0)
+        return fd;
+    
+    if (assert)
+        ret = StatusAssert(fd);
+    else
+        ret = StatusDessert(fd);
+
+    if (ret)
+        return ret;
+    
+    ret = DeviceRelease(fd);
+    if (ret)
+        return ret;
+
+    return 0;
+}
+
+int status_sget(UINT32 status_type)
+{
+    int fd = status_get(status_type);
+    int ret;
+    int status;
+    
+    if (fd < 0)
+        return fd;
+    
+    ret = StatusGet(fd);
+    if (ret < 0)
+        return ret;
+    
+    status = ret;
+    
+    ret = DeviceRelease(fd);
+    if (ret)
+        return ret;
+
+    return status;
+}
+
+int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert)
+{
+    int ret = status_chg(status_type, assert);
+    
+    if (ret)
+        return ret;
+    
+    ret = status_sget(status_ret_type);
+    if (assert)
+    {
+        if (ret != SAC_STATUS_ASSERT)
+            return -EFAULT;
+    }
+    else
+    {
+        if (ret != SAC_STATUS_DESSERT)
+            return -EFAULT;
+    }
+    
+    return 0;
+}
+
 int canhcbdev_get(void)
 {
 	void * pDev;
