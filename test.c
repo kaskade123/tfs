@@ -7,7 +7,9 @@ MODULE_DECLARE(func);
 MODULE_DECLARE(eth);
 MODULE_DECLARE(sv);
 
-static char print_buf[2048];
+#define PRINT_BUF_SIZE  65536
+
+static char print_buf[PRINT_BUF_SIZE];
 static SEM_ID displaySem;
 
 static int test_show_entry(int delay)
@@ -19,7 +21,7 @@ static int test_show_entry(int delay)
 	FOREVER
 	{
 		semTake(displaySem, delay * sysClkRateGet());
-		memset(print_buf, 0, 2048);
+		memset(print_buf, 0, PRINT_BUF_SIZE);
 		lib_show(print_buf);
 		logMsg(print_buf, 0,0,0,0,0,0);
 		taskDelay(sysClkRateGet());
