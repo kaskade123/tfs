@@ -115,7 +115,7 @@ static void ion_decode_temp_check(uint32_t src)
 static void ion_decode_di_check(uint32_t src)
 {
     UINT8 old_id[8], old_bit, new_bit;
-    char di_change_buf[128] = {0};
+    char di_change_buf[0x1000] = {0};
     memcpy(old_id, pStatus->IOM[src].DI, 8);
     memcpy(pStatus->IOM[src].DI, pStatus->RECV_PKT.pkt_buf + 5, pStatus->RECV_PKT.pkt_buf[0] - 4);
     pStatus->IOM[src].di_recved = 1;
