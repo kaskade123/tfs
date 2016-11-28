@@ -30,15 +30,36 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	ETHERNET_DEV_S * p = pDev;
 	UINT32 cksum, idx;
 	
+#if 0
 	calc_fletcher32(pBuf, bufLen, &cksum);
+#endif
 	
 	/* Hook for eth1 - eth4 */
 	if ((strlen(p->name) == 4) && 
 			(strncmp(p->name, ETH_DEV_PREFIX, strlen(ETH_DEV_PREFIX)) == 0))
 	{
 	    idx = p->name[strlen(ETH_DEV_PREFIX)] - '1';
-	    if (cksum == pStatus->pktCksum[idx])
-	        pStatus->pktRecv[idx] ++;
+#if 0
+	    switch(idx)
+	    {
+	    /*
+	     * eth1 <-> eth2
+	     * eth3 <-> eth4
+	     */
+	    case 0:
+	    case 2:
+	        if (cksum == pStatus->pktCksum[idx + 1])
+	            pStatus->pktRecv[idx] ++;
+	        break;
+	    case 1:
+	    case 3:
+	        if (cksum == pStatus->pktCksum[idx - 1])
+	            pStatus->pktRecv[idx] ++;
+	        break;
+	    }
+#else
+        pStatus->pktRecv[idx] ++;
+#endif
 	}
     return TRUE;
 }
