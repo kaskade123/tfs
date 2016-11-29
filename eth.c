@@ -12,7 +12,7 @@ typedef struct eth_status
 {
 	BOOL 	ethInited;
 	INT32 	hdr[ETH_DEV_COUNT];		/* Ethernet device handler */
-	UINT8 * pkt[ETH_DEV_COUNT]; 	/* Ethernet packet buffer */
+	UINT8 * pkt; 	                /* Ethernet packet buffer */
 	UINT32 	pktCksum[ETH_DEV_COUNT];/* Ethernet packet cksum */
 	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
@@ -111,7 +111,7 @@ static void eth_send_task(void * arg)
 	/* Send out one packet for each port */
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
-		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN, &pStatus->pktCksum[i]))
+		if (eth_send_random(pStatus->hdr[i], pStatus->pkt, ETH_PKT_LEN, &pStatus->pktCksum[i]))
 			pStatus->pktSendFail[i]++;
 		else
 			pStatus->pktSent[i]++;
@@ -192,8 +192,8 @@ static void eth_init(void)
 			return;
 		
 		/* Initialize packet buffer */
-		pStatus->pkt[i] = malloc(ETH_BUFFER_LEN);
-		assert(pStatus->pkt[i] != NULL);
+		pStatus->pkt = malloc(ETH_BUFFER_LEN);
+		assert(pStatus->pkt != NULL);
 		
 		/* Initialize packet counter */
 		pStatus->pktSent[i] = 0;
