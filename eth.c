@@ -31,16 +31,13 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	ETHERNET_DEV_S * p = pDev;
 	UINT32 cksum, idx;
 	
-#if 0
-	calc_fletcher32(pBuf, bufLen, &cksum);
-#endif
-	
 	/* Hook for eth1 - eth4 */
 	if ((strlen(p->name) == 4) && 
 			(strncmp(p->name, ETH_DEV_PREFIX, strlen(ETH_DEV_PREFIX)) == 0))
 	{
 	    idx = p->name[strlen(ETH_DEV_PREFIX)] - '1';
 #if 0
+	    calc_fletcher32(pBuf, bufLen, &cksum);
 	    switch(idx)
 	    {
 	    /*
@@ -63,7 +60,8 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	        break;
 	    }
 #else
-        pStatus->pktRecv[idx] ++;
+	    if (bufLen == ETH_PKT_LEN)
+	        pStatus->pktRecv[idx] ++;
 #endif
 	}
     return TRUE;
