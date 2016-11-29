@@ -15,8 +15,9 @@ typedef struct eth_status
 	UINT8 * pkt[ETH_DEV_COUNT]; 	/* Ethernet packet buffer */
 	UINT32 	pktCksum[ETH_DEV_COUNT];/* Ethernet packet cksum */
 	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
-	UINT32 	pktFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
+	UINT32 	pktSendFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
+	UINT32 	pktRecvFail[ETH_DEV_COUNT];	/* Ethernet packet receive cksum check fail */
 	INT32 	timerFd;				/* Timer Handler */
 	SEM_ID 	muxSem;					/* Semaphore */
 	QJOB 	job;					/* job queue */
@@ -50,11 +51,15 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	    case 2:
 	        if (cksum == pStatus->pktCksum[idx + 1])
 	            pStatus->pktRecv[idx] ++;
+	        else
+	            pStatus->pktRecvFail[idx] ++;
 	        break;
 	    case 1:
 	    case 3:
 	        if (cksum == pStatus->pktCksum[idx - 1])
 	            pStatus->pktRecv[idx] ++;
+	        else
+	            pStatus->pktRecvFail[idx] ++;
 	        break;
 	    }
 #else
@@ -109,7 +114,7 @@ static void eth_send_task(void * arg)
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
 		if (eth_send_random(pStatus->hdr[i], pStatus->pkt[i], ETH_PKT_LEN, &pStatus->pktCksum[i]))
-			pStatus->pktFail[i]++;
+			pStatus->pktSendFail[i]++;
 		else
 			pStatus->pktSent[i]++;
 	}
@@ -193,7 +198,8 @@ static void eth_init(void)
 		/* Initialize packet counter */
 		pStatus->pktSent[i] = 0;
 		pStatus->pktRecv[i] = 0;
-		pStatus->pktFail[i] = 0;
+		pStatus->pktSendFail[i] = 0;
+		pStatus->pktRecvFail[i] = 0;
 		
 		/* Drop all current packets */
 		assert(EthernetPktDrop(pStatus->hdr[i], 512) >= 0);
@@ -264,9 +270,9 @@ static void eth_show(char * buf)
 		for (i = 0; i < ETH_DEV_COUNT; i++)
 		{
 			sprintf(buf + strlen(buf),
-				"eth%d : Send %u Recv %u Fail %u\n",
+				"eth%d : Send %u Recv %u Send Fail %u Recv Fail %u\n",
 				i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
-				pStatus->pktFail[i]);
+				pStatus->pktSendFail[i], pStatus->pktRecvFail[i]);
 		}
 		
 		eth_sender_resume();
