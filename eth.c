@@ -119,6 +119,23 @@ static void eth_send_task(void * arg)
 	pStatus->in_process = 0;
 }
 
+static int eth_poll_at_least(int idx, int num)
+{
+    UINT32 pktRecved = 0;
+    UINT32 cnt = 0;
+    int status;
+    do
+    {
+        UINT32 pktLimit = 32;
+        status = EthernetRecvPoll(pStatus->hdr[idx], &pktLimit);
+        if (status == 0 || status == -EAGAIN)
+            pktRecved += pktLimit;
+        cnt ++;
+    }while(pktRecved < num && cnt < 1000);
+    
+    return pktRecved;
+}
+
 static int eth_polling_task(void)
 {
 	int i;
@@ -132,7 +149,7 @@ static int eth_polling_task(void)
 		
 		/* Receive all packets pending */
 		for (i = 0; i < ETH_DEV_COUNT; i++)
-			while (EthernetRecvPoll(pStatus->hdr[i], NULL) == -EAGAIN);
+		    eth_poll_at_least(i, 1);
 	}
 }
 
