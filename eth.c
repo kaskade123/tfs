@@ -21,7 +21,7 @@ typedef struct eth_status
 	INT32 	timerFd;				/* Timer Handler */
 	SEM_ID 	muxSem;					/* Semaphore */
 	QJOB 	job;					/* job queue */
-	UINT32 	in_process;
+	atomic_t in_process;
 }ETH_STATUS_S;
 
 static ETH_STATUS_S * pStatus = NULL;
@@ -119,7 +119,7 @@ static void eth_send_task(void * arg)
 	
 	assert(semGive(pStatus->muxSem) == OK);
 	
-	pStatus->in_process = 0;
+	vxAtomicSet(&pStatus->in_process, 0);
 }
 
 static int eth_poll_at_least(int idx, int num)
@@ -178,6 +178,8 @@ static void eth_init(void)
 	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 	assert(pStatus->muxSem != NULL);
 
+	vxAtomicSet(&pStatus->in_process, 0);
+
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
 		/* Get eth device name */
@@ -216,9 +218,8 @@ static void eth_init(void)
 
 static void eth_timer_hook(int arg)
 {
-	if (pStatus->in_process == 0)
+    if (vxAtomicCas(&pStatus->in_process, 0, 1))
 	{
-		pStatus->in_process = 1;
 		pStatus->job.func = eth_send_task;
 		QJOB_SET_PRI(&pStatus->job, 20);
 		queue_add(&pStatus->job);
