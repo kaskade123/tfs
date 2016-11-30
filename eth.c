@@ -17,7 +17,6 @@ typedef struct eth_status
 	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
 	UINT32 	pktSendFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
-	UINT32 	pktRecvFail[ETH_DEV_COUNT];	/* Ethernet packet receive cksum check fail */
 	INT32 	timerFd;				/* Timer Handler */
 	QJOB 	job;					/* job queue */
 	atomic_t in_process;
@@ -46,15 +45,11 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	    case 2:
 	        if (cksum == pStatus->pktCksum[idx + 1])
 	            pStatus->pktRecv[idx] ++;
-	        else
-	            pStatus->pktRecvFail[idx] ++;
 	        break;
 	    case 1:
 	    case 3:
 	        if (cksum == pStatus->pktCksum[idx - 1])
 	            pStatus->pktRecv[idx] ++;
-	        else
-	            pStatus->pktRecvFail[idx] ++;
 	        break;
 	    }
 	}
@@ -184,7 +179,6 @@ static void eth_init(void)
 		pStatus->pktSent[i] = 0;
 		pStatus->pktRecv[i] = 0;
 		pStatus->pktSendFail[i] = 0;
-		pStatus->pktRecvFail[i] = 0;
 		
 		/* Drop all current packets */
 		assert(EthernetPktDrop(pStatus->hdr[i], 512) >= 0);
@@ -256,9 +250,9 @@ static void eth_show(char * buf)
 		for (i = 0; i < ETH_DEV_COUNT; i++)
 		{
 			sprintf(buf + strlen(buf),
-				"eth%d : Send %u Recv %u Send Fail %u Recv Fail %u\n",
+				"eth%d : Send %u Recv %u Send Fail %u\n",
 				i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
-				pStatus->pktSendFail[i], pStatus->pktRecvFail[i]);
+				pStatus->pktSendFail[i]);
 		}
 		
 		eth_sender_resume();
