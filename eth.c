@@ -6,7 +6,7 @@
 
 #define ETH_BW_LIMIT	10000000	/* BW limited to 10Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
-#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN)
+#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN * 2)
 
 typedef struct eth_status
 {
@@ -19,7 +19,6 @@ typedef struct eth_status
 	UINT32 	pktSendFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
 	UINT32 	pktRecvFail[ETH_DEV_COUNT];	/* Ethernet packet receive cksum check fail */
 	INT32 	timerFd;				/* Timer Handler */
-	SEM_ID 	muxSem;					/* Semaphore */
 	QJOB 	job;					/* job queue */
 	atomic_t in_process;
 }ETH_STATUS_S;
@@ -112,9 +111,8 @@ static void eth_send_task(void * arg)
 			pStatus->pktSent[i]++;
 	}
 	
-	assert(semGive(pStatus->muxSem) == OK);
-	
-	vxAtomicSet(&pStatus->in_process, 0);
+    /* Enable next run of packet sending */
+    vxAtomicSet(&pStatus->in_process, 0);
 }
 
 static int eth_poll_at_least(int idx, int num)
@@ -134,21 +132,16 @@ static int eth_poll_at_least(int idx, int num)
     return pktRecved;
 }
 
-static int eth_polling_task(void)
+static void eth_recv_task(void * arg)
 {
-	int i;
-	
-	assert(pStatus->ethInited == TRUE);
-	
-	while(1)
-	{
-		/* Wait for send is done */
-		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
-		
-		/* Receive all packets pending */
-		for (i = 0; i < ETH_DEV_COUNT; i++)
-		    eth_poll_at_least(i, 1);
-	}
+    int i;
+    
+    /* Receive all packets pending */
+    for (i = 0; i < ETH_DEV_COUNT; i++)
+        eth_poll_at_least(i, 1);
+    
+    /* Enable next run of packet sending */
+    vxAtomicSet(&pStatus->in_process, 0);
 }
 
 static void eth_init(void)
@@ -170,9 +163,6 @@ static void eth_init(void)
 	pStatus->timerFd = timer_get();
 	assert(pStatus->timerFd >= 0);
 	
-	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
-	assert(pStatus->muxSem != NULL);
-
 	vxAtomicSet(&pStatus->in_process, 0);
 
 	for (i = 0; i < ETH_DEV_COUNT; i++)
@@ -206,19 +196,21 @@ static void eth_init(void)
 	}
 	
 	pStatus->ethInited = TRUE;
-	
-	assert(taskSpawn("tEthPoll", 40, VX_SPE_TASK, 0x4000, eth_polling_task,
-			0,0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
 static void eth_timer_hook(int arg)
 {
     if (vxAtomicCas(&pStatus->in_process, 0, 1))
 	{
-		pStatus->job.func = eth_send_task;
+        if (pStatus->job.func == eth_send_task)
+            pStatus->job.func = eth_recv_task;
+        else
+            pStatus->job.func = eth_send_task;
 		QJOB_SET_PRI(&pStatus->job, 20);
 		queue_add(&pStatus->job);
 	}
+    else
+        logMsg("fast\n", 1,2,3,4,5,6);
 }
 
 static void eth_start(void)
@@ -243,7 +235,7 @@ static void eth_sender_suspend(void)
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
-	assert(semGive(pStatus->muxSem) == OK);
+    eth_recv_task(NULL);
 }
 
 static void eth_sender_resume(void)
