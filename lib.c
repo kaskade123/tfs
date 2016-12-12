@@ -445,3 +445,41 @@ void calc_fletcher32(unsigned char *data, unsigned n_bytes,
 
     *cksum = sum2 << 16 | sum1;
 }
+
+int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
+{
+    HSB_SEND_HEADER * pHdr;
+    UINT8 * pPointer;
+    UINT32 *pUINT32;
+    UINT8 * pPkt;
+    INT32 hdr = ethdev_get("hsb");
+    int ret;
+    
+    assert(hdr >= 0);
+    
+    pPkt = malloc(1600);
+    assert(pPkt != NULL);
+    memset(pPkt, 0, 1600);
+
+    pHdr = (HSB_SEND_HEADER *)pPkt;
+
+    pHdr->dstMac[5] = 2;
+    pHdr->srcMac[5] = 1;
+    pHdr->PRI = 3;
+    pHdr->DST = 0x01 << addr;
+    pPointer = pPkt + sizeof(*pHdr);
+    *pPointer++ = 0x02;     /* Config */
+    *pPointer++ = rand();   /* Index */
+    *pPointer++ = rand();
+    *pPointer++ = 1;        /* Number */
+    pUINT32 = (UINT32 *)pPointer;
+    *pUINT32++ = regAddr | 0x0F000000;
+    *pUINT32++ = regVal;
+    pPointer = (UINT8 *)pUINT32;
+    pHdr->DLC = pPointer - pPkt - sizeof(*pHdr);
+
+    ret = EthernetSendPkt(hdr, pPkt, pPointer - pPkt);
+    free(pPkt);
+    DeviceRelease(hdr);
+    return ret;
+}
