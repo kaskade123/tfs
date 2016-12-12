@@ -203,8 +203,6 @@ static void eth_timer_hook(int arg)
 		QJOB_SET_PRI(&pStatus->job, 20);
 		queue_add(&pStatus->job);
 	}
-    else
-        logMsg("fast\n", 1,2,3,4,5,6);
 }
 
 static void eth_start(void)
