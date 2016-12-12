@@ -174,17 +174,32 @@ ends:
 static void irigb_print(char * str)
 {
     INT32 hdr;
-    RTC_DEV_S * pDev = NULL;
+    void * pDev = NULL;
     
-    pDev = DescriptionGetByType(SAC_DEVICE_TYPE_IRIGB, NULL);
-    hdr = DeviceRequest(pDev);
-    if (hdr < 0)
-        return;
-
-    if (IRIGBStatus(hdr))
-        sprintf(str, "IRIGB : Failed\t");
+    if (is_hmi())
+    {
+        pDev = DescriptionGetByType(SAC_DEVICE_TYPE_IRIGB, NULL);
+        hdr = DeviceRequest(pDev);
+        if (hdr < 0)
+            return;
+    
+        if (IRIGBStatus(hdr))
+            sprintf(str, "IRIGB : Failed\t");
+        else
+            sprintf(str, "IRIGB : OK\t");
+    }
     else
-    	sprintf(str, "IRIGB : OK\t");
+    {
+        pDev = DescriptionGetByType(SAC_DEVICE_TYPE_DATETIME, NULL);
+        hdr = DeviceRequest(pDev);
+        if (hdr < 0)
+            return;
+
+        if (DateTimeStatus(hdr))
+            sprintf(str, "IRIGB : Failed\t");
+        else
+            sprintf(str, "IRIGB : OK\t");
+    }
     
     DeviceRelease(hdr);
 }
@@ -271,7 +286,7 @@ ends:
 
 static void func_start(void)
 {
-
+    hsb_remote_reg_config(addr_get(), 0x4, 0x3);
 }
 
 static void func_show(char * buf)
