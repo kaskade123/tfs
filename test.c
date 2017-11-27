@@ -17,7 +17,7 @@ static int test_show_entry(int delay)
 	/* Default to half an hour */
 	if (delay <= 0)
 		delay = 1800;
-	
+
 	FOREVER
 	{
 		semTake(displaySem, delay * sysClkRateGet());
@@ -26,7 +26,7 @@ static int test_show_entry(int delay)
 		logMsg(print_buf, 0,0,0,0,0,0);
 		taskDelay(sysClkRateGet());
 	}
-	
+
 	return 0;
 }
 
@@ -36,10 +36,10 @@ static void lib_show_start(int delay)
 }
 
 static int test_start_entry(int delay)
-{	
+{
 	/* initialize lib */
 	lib_init();
-	
+
 	/* Register modules */
 #if 0
 	hsb_register();
@@ -51,23 +51,23 @@ static int test_start_entry(int delay)
 	if (is_cpu())
 	    sv_register();
 	func_register();
-	
+
 	/* delay for some time */
 	taskDelay(500);
-	
+
 	/* Delayed lib init */
 	lib_delayed_init();
-	
+
 	/* modules start*/
 	lib_start();
-	
+
 	/* semaphore initialize */
 	displaySem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
 	assert(displaySem);
-	
+
 	/* show start */
 	lib_show_start(delay);
-	
+
 	/* Last stage lib init */
 	lib_last_stage_init();
 	return 0;

@@ -17,7 +17,7 @@ static void list_init(void)
 {
 	pModules = malloc(sizeof(*pModules));
 	assert(pModules);
-	
+
 	lstInit(pModules);
 }
 
@@ -25,7 +25,7 @@ static void ip_setup(void)
 {
 	int fd = ethdev_get("backplane");
 	char ip_addr[16];
-	
+
 	assert(fd >= 0);
 	
 	sprintf(ip_addr, "192.168.0.%d", 100 + addr_get());
@@ -39,10 +39,10 @@ static int blink_task(int fd)
 	 * status == 1 : On
 	 */
 	static int status = 0;
-	
+
 	FOREVER
 	{
-	
+
 		if (status)
 		{
 			status = 0;
@@ -63,11 +63,11 @@ static int blink_task(int fd)
 static void light_start(void)
 {
 	int redFd;
-	
+
 	/* Get two light handler */
 	redFd = light_get("red");
 	assert(redFd >= 0);
-	
+
 	/* Turn On Red Light */
 	assert(LightOn(redFd) == 0);
 }
@@ -78,12 +78,12 @@ static void light_start(void)
 static void light_blink(void)
 {
 	int greenFd;
-	
+
 	greenFd = light_get("green");
 	assert(greenFd >= 0);
-		
+
 	/* Start blink task */
-	assert(taskSpawn("tLight", 30, VX_SPE_TASK, 0x4000, blink_task, greenFd, 
+	assert(taskSpawn("tLight", 30, VX_SPE_TASK, 0x4000, blink_task, greenFd,
 			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
@@ -97,27 +97,27 @@ static void info_record(void)
 	struct tm tm;
 	INT32 logFd;
 	char buf[100] = {0};
-	
+
 	/* Add /tffs/log into logMsg fd list */
 	logFd = open("/tffs/log", O_WRONLY | O_CREAT | O_APPEND, 0666);
 	if (logFd < 0)
 		return;
-	
+
 	logFdAdd(logFd);
-	
+
 	/* See if we can display the time */
 	if (fd > 0)
 	{
 		TimeGet(fd, &rtc_time);
 		DeviceRelease(fd);
-	
+
 		gmtime_r((time_t *)&rtc_time, &tm);
-	
+
 		strftime(buf, 100, "%Y-%m-%d %H:%M:%S", &tm);
 	}
 	else
 		sprintf(buf, "NO-RTC-NO-TIME");
-	
+
 
 	/* Record the bootup */
 	logMsg("%s bootup\n", (int)buf, 0,0,0,0,0);
@@ -127,19 +127,19 @@ void time_setup(void)
 {
 	int fd;
 	struct timeval tv;
-	
+
 	/* CPU board do not have RTC */
 	if (is_cpu())
 		return;
-	
+
 	/* get rtc time */
 	fd = DeviceRequest(DescriptionGetByType(SAC_DEVICE_TYPE_RTC, NULL));
 	if (fd < 0)
 		return;
-	
+
 	assert (TimeGet(fd, (int *)&tv.tv_sec) == 0);
 	tv.tv_usec = 0;
-	
+
 	assert (settimeofday(&tv, NULL) == OK);
 }
 
@@ -193,7 +193,7 @@ int ethdev_get(const char * name)
 				return DeviceRequest(pDev);
 		}
 	}while(pDev);
-	
+
 	return -ENOENT;
 }
 
@@ -211,7 +211,7 @@ int status_get(UINT32 status_type)
                 return DeviceRequest(pDev);
         }
     }while(pDev);
-    
+
     return -ENOENT;
 }
 
@@ -219,10 +219,10 @@ int status_chg(UINT32 status_type, UINT32 assert)
 {
     int fd = status_get(status_type);
     int ret;
-    
+
     if (fd < 0)
         return fd;
-    
+
     if (assert)
         ret = StatusAssert(fd);
     else
@@ -230,7 +230,7 @@ int status_chg(UINT32 status_type, UINT32 assert)
 
     if (ret)
         return ret;
-    
+
     ret = DeviceRelease(fd);
     if (ret)
         return ret;
@@ -243,16 +243,16 @@ int status_sget(UINT32 status_type)
     int fd = status_get(status_type);
     int ret;
     int status;
-    
+
     if (fd < 0)
         return fd;
-    
+
     ret = StatusGet(fd);
     if (ret < 0)
         return ret;
-    
+
     status = ret;
-    
+
     ret = DeviceRelease(fd);
     if (ret)
         return ret;
@@ -263,10 +263,10 @@ int status_sget(UINT32 status_type)
 int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert)
 {
     int ret = status_chg(status_type, assert);
-    
+
     if (ret)
         return ret;
-    
+
     ret = status_sget(status_ret_type);
     if (assert)
     {
@@ -278,7 +278,7 @@ int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert)
         if (ret != SAC_STATUS_DESSERT)
             return -EFAULT;
     }
-    
+
     return 0;
 }
 
@@ -291,7 +291,7 @@ int canhcbdev_get(void)
 		if (pDev != NULL)
 			return DeviceRequest(pDev);
 	}while(pDev != NULL);
-	
+
 	return -ENOENT;
 }
 
@@ -307,7 +307,7 @@ UINT8 addr_get(void)
 int light_get(char * color)
 {
 	INDICATOR_DEV_S * pDev = NULL;
-	
+
 	do
 	{
 		pDev = DescriptionGetByType(SAC_DEVICE_TYPE_INDICATOR, pDev);
@@ -318,7 +318,7 @@ int light_get(char * color)
 				return DeviceRequest(pDev);
 		}
 	}while(pDev != NULL);
-	
+
 	return -ENOENT;
 }
 
@@ -326,7 +326,7 @@ int timer_get(void)
 {
 	static SAC_DEV_HEADER_ID pDev = NULL;
 	int fd;
-	
+
 	do
 	{
 		pDev = DescriptionGetByType(SAC_DEVICE_TYPE_TIMER, pDev);
@@ -337,7 +337,7 @@ int timer_get(void)
 				return fd;
 		}
 	}while(pDev != NULL);
-	
+
 	return -ENOENT;
 }
 
@@ -351,7 +351,7 @@ int iondev_get(void)
 		if (pDev)
 			return DeviceRequest(pDev);
 	}while(pDev);
-	
+
 	return -ENOENT;
 }
 
@@ -365,21 +365,21 @@ void rand_range(UINT8 * ptr, UINT32 size)
 void moduleReg(void (*start)(void), void (*show)(char *))
 {
 	struct testModule * p;
-	
+
 	p = malloc(sizeof(*p));
 	assert(p);
 	memset(p, 0, sizeof(*p));
-	
+
 	p->start = start;
 	p->show = show;
-	
+
 	lstAdd(pModules, &p->node);
 }
 
 void lib_start()
 {
 	struct testModule * p = (struct testModule *)lstFirst(pModules);
-	
+
 	while (p != NULL)
 	{
 		p->start();
@@ -391,11 +391,11 @@ void lib_show(char * buf)
 {
 	struct testModule * p = (struct testModule *)lstFirst(pModules);
 	struct timeval tv;
-	
+
 	gettimeofday(&tv, NULL);
-	
+
 	sprintf(buf, "\n%s\n", ctime((const time_t *)&tv.tv_sec));
-	
+
 	while (p != NULL)
 	{
 		p->show(buf + strlen(buf));
@@ -406,7 +406,7 @@ void lib_show(char * buf)
 int is_cpu(void)
 {
 	extern char * get_env(char *);
-	
+
 	if (strncmp(get_env("board"), "NPS-CPU", strlen("NPS-CPU")) == 0)
 		return 1;
 	else
@@ -454,9 +454,9 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
     UINT8 * pPkt;
     INT32 hdr = ethdev_get("hsb");
     int ret;
-    
+
     assert(hdr >= 0);
-    
+
     pPkt = malloc(1600);
     assert(pPkt != NULL);
     memset(pPkt, 0, 1600);
