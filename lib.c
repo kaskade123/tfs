@@ -27,8 +27,8 @@ static void ip_setup(void)
 	char ip_addr[16];
 
 	assert(fd >= 0);
-	
-	sprintf(ip_addr, "192.168.0.%d", 100 + addr_get());
+
+	sprintf(ip_addr, "100.100.100.%d", 100 + addr_get());
 	assert(EthernetIPSet(fd, ip_addr) == 0);
 }
 
