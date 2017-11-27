@@ -6,7 +6,8 @@
 
 #define ETH_BW_LIMIT	10000000	/* BW limited to 10Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
-#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN * 2)
+#define ETH_PKT_CNT     1           /* Packets Send or Recv in one run */
+#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN / ETH_PKT_CNT * 2)
 
 typedef struct eth_status
 {
@@ -17,6 +18,7 @@ typedef struct eth_status
 	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
 	UINT32 	pktSendFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
+	UINT32  pktRecvFail[ETH_DEV_COUNT]; /* Ethernet packet recv fail */
 	INT32 	timerFd;				/* Timer Handler */
 	QJOB 	job;					/* job queue */
 	atomic_t in_process;
@@ -35,6 +37,7 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	{
 	    idx = p->name[strlen(ETH_DEV_PREFIX)] - '1';
 	    calc_fletcher32(pBuf, bufLen, &cksum);
+#if 0
 	    switch(idx)
 	    {
 	    /*
@@ -52,6 +55,11 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
 	            pStatus->pktRecv[idx] ++;
 	        break;
 	    }
+#endif
+	    if (cksum == pStatus->pktCksum[idx])
+	        pStatus->pktRecv[idx] ++;
+	    else
+	        pStatus->pktRecvFail[idx] ++;
 	}
     return TRUE;
 }
@@ -100,10 +108,17 @@ static void eth_send_task(void * arg)
 	/* Send out one packet for each port */
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
-		if (eth_send_random(pStatus->hdr[i], pStatus->pkt, ETH_PKT_LEN, &pStatus->pktCksum[i]))
-			pStatus->pktSendFail[i]++;
-		else
-			pStatus->pktSent[i]++;
+	    if (pStatus->hdr[i] >= 0)
+	    {
+	        int j;
+	        for (j = 0; j < ETH_PKT_CNT; j++)
+	        {
+                if (eth_send_random(pStatus->hdr[i], pStatus->pkt, ETH_PKT_LEN, &pStatus->pktCksum[i]))
+                    pStatus->pktSendFail[i]++;
+                else
+                    pStatus->pktSent[i]++;
+	        }
+	    }
 	}
 
     /* Enable next run of packet sending */
@@ -133,8 +148,11 @@ static void eth_recv_task(void * arg)
 
     /* Receive all packets pending */
     for (i = 0; i < ETH_DEV_COUNT; i++)
-        eth_poll_at_least(i, 1);
-    
+    {
+        if (pStatus->hdr[i] >= 0)
+            eth_poll_at_least(i, ETH_PKT_CNT);
+    }
+
     /* Enable next run of packet sending */
     vxAtomicSet(&pStatus->in_process, 0);
 }
@@ -169,8 +187,8 @@ static void eth_init(void)
 		/* Request handler, if failed, this is CPU board */
 		pStatus->hdr[i] = ethdev_get(ethName);
 		if (pStatus->hdr[i] < 0)
-			return;
-		
+			continue;
+
 		/* Initialize packet buffer */
 		pStatus->pkt = malloc(ETH_BUFFER_LEN);
 		assert(pStatus->pkt != NULL);
@@ -247,10 +265,11 @@ static void eth_show(char * buf)
 		sprintf(buf, "\n*********** ETH ***********\n");
 		for (i = 0; i < ETH_DEV_COUNT; i++)
 		{
-			sprintf(buf + strlen(buf),
-				"eth%d : Send %u Recv %u Send Fail %u\n",
-				i+1, pStatus->pktSent[i], pStatus->pktRecv[i],
-				pStatus->pktSendFail[i]);
+		    if (pStatus->hdr[i] >= 0)
+                sprintf(buf + strlen(buf),
+                        "eth%d : Send %u Recv %u Send Fail %u Recv Fail %u\n", i + 1,
+                        pStatus->pktSent[i], pStatus->pktRecv[i],
+                        pStatus->pktSendFail[i], pStatus->pktRecvFail[i]);
 		}
 
 		eth_sender_resume();
