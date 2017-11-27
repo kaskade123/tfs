@@ -41,15 +41,15 @@ static int test_start_entry(int delay)
 	lib_init();
 
 	/* Register modules */
-#if 0
 	hsb_register();
-#endif
 	canhcb_register();
     ion_register();
 	if (is_hmi())
 	    eth_register();
+#if 0
 	if (is_cpu())
 	    sv_register();
+#endif
 	func_register();
 
 	/* delay for some time */
