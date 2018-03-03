@@ -90,9 +90,14 @@ static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT16 dlc)
 
 static void hsb_send_pkt(void)
 {
+    int ret;
 	hsb_spkt_display(pStatus->pktBuf);
 
-    if (EthernetSendPkt(pStatus->hsbFd, pStatus->pktBuf, pkt_len(pStatus->pktBuf)) == 0)
+	wvEvent(1, "Send>", 6);
+    ret = EthernetSendPkt(pStatus->hsbFd, pStatus->pktBuf, pkt_len(pStatus->pktBuf));
+    wvEvent(1, "Send<", 6);
+
+    if (ret == 0)
     	pStatus->pktSend++;
 }
 
