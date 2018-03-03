@@ -44,12 +44,9 @@ static int test_start_entry(int delay)
 	hsb_register();
 	canhcb_register();
     ion_register();
-	if (is_hmi())
-	    eth_register();
-#if 0
+    eth_register();
 	if (is_cpu())
 	    sv_register();
-#endif
 	func_register();
 
 	/* delay for some time */
