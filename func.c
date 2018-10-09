@@ -322,7 +322,7 @@ static void func_start(void)
 {
     if (is_hmi())
         /* IRIG-B, positive, IRIG-B output enable, PPS output enable */
-        hsb_remote_reg_config(addr_get(), 0x4, 0x2BB);
+        hsb_remote_reg_config(addr_get(), 0x4, 0x2AA);
 }
 
 static void func_show(char * buf)
