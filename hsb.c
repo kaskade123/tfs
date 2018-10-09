@@ -311,13 +311,6 @@ static void hsb_show(char * buf)
             "\nUpTime : %u Second(s), maxRetry = %d\n", (uint32_t) time(NULL),
             pProfiling->maxRetry);
     /*
-     * Total send and recv
-     */
-    snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf),
-            "Total Sent : %10d, Total Recv : %10d\n", *(uint32_t *) 0x80000308,
-            *(uint32_t *) 0x80000304);
-    /*
      * Title
      */
     snprintf(buf + strlen(buf),
