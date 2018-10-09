@@ -4,7 +4,7 @@
 #define ETH_DEV_PREFIX	"MMS"
 #define ETH_BUFFER_LEN	1600
 
-#define ETH_BW_LIMIT	10000000	/* BW limited to 10Mbps */
+#define ETH_BW_LIMIT	2000000	    /* BW limited to 2Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
 #define ETH_PKT_CNT     1           /* Packets Send or Recv in one run */
 #define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN / ETH_PKT_CNT * 2)
