@@ -307,41 +307,41 @@ static void hsb_show(char * buf)
      * Up Time
      */
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf),
+            PRINT_BUF_SIZE - strlen(buf),
             "\nUpTime : %u Second(s), maxRetry = %d\n", (uint32_t) time(NULL),
             pProfiling->maxRetry);
     /*
      * Title
      */
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "%8s\t", "ADDRESS");
+            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "ADDRESS");
     for (i = 0; i < HSB_MAX_NODE; i++)
         snprintf(buf + strlen(buf),
-                0x10000 - strlen(buf), "%10d\t", i + 1);
+                PRINT_BUF_SIZE - strlen(buf), "%10d\t", i + 1);
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "\n");
+            PRINT_BUF_SIZE - strlen(buf), "\n");
     /*
      * Total counts
      */
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "%8s\t", "RECVED");
+            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "RECVED");
     for (i = 0; i < HSB_MAX_NODE; i++)
         snprintf(buf + strlen(buf),
-                0x10000 - strlen(buf), "%10u\t",
+                PRINT_BUF_SIZE - strlen(buf), "%10u\t",
                 pProfiling->rxCount[i]);
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "\n");
+            PRINT_BUF_SIZE - strlen(buf), "\n");
     /*
      * Missing counts
      */
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "%8s\t", "MISSING");
+            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "MISSING");
     for (i = 0; i < HSB_MAX_NODE; i++)
         snprintf(buf + strlen(buf),
-                0x10000 - strlen(buf), "%10u\t",
+                PRINT_BUF_SIZE - strlen(buf), "%10u\t",
                 pProfiling->rxMissing[i]);
     snprintf(buf + strlen(buf),
-            0x10000 - strlen(buf), "\n");
+            PRINT_BUF_SIZE - strlen(buf), "\n");
 
     hsb_resume();
 }

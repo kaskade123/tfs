@@ -8,8 +8,6 @@ MODULE_DECLARE(eth);
 MODULE_DECLARE(sv);
 MODULE_DECLARE(manage);
 
-#define PRINT_BUF_SIZE  65536
-
 static char print_buf[PRINT_BUF_SIZE];
 static SEM_ID displaySem;
 

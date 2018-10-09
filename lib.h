@@ -17,6 +17,8 @@
 #include "sacDev.h"
 #include "sacDevBus.h"
 
+#define PRINT_BUF_SIZE  0x40000
+
 typedef struct hsb_recv_hdr
 {
     UINT8   dstMac[6];
