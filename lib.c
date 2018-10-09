@@ -297,11 +297,11 @@ int canhcbdev_get(void)
 
 UINT8 addr_get(void)
 {
-    static UINT8 addr = 0xFF;
-    if (addr == 0xFF)
-	    addr = (*(UINT32 *)(0x80000004)) >> 16;
+    FPGA_DEV_S * pDev;
 
-    return addr;
+    pDev = DescriptionGetByType(SAC_DEVICE_TYPE_FPGA, NULL);
+
+    return pDev->addr;
 }
 
 int light_get(char * color)
