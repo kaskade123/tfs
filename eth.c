@@ -6,7 +6,7 @@
 
 #define ETH_BW_LIMIT	2000000	    /* BW limited to 2Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
-#define ETH_PKT_CNT     1           /* Packets Send or Recv in one run */
+#define ETH_PKT_CNT     16          /* Packets Send or Recv in one run */
 #define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN / ETH_PKT_CNT * 2)
 
 typedef struct eth_status
@@ -123,7 +123,7 @@ static int eth_poll_at_least(int idx, int num)
         if (status == 0 || status == -EAGAIN)
             pktRecved += pktLimit;
         cnt ++;
-    }while(pktRecved < num && cnt < 1000);
+    }while(pktRecved < num && cnt < 10);
 
     return pktRecved;
 }
