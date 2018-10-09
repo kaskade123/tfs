@@ -16,20 +16,6 @@ static SV_STATUS_S * pStatus = NULL;
 
 #define SV_POLLING_TASK_PRIORITY	40
 
-static void eth_srcmac_fill(INT32 hdr, UINT8 * pkt)
-{
-    UINT32 mac32[6];
-    char strMAC[20] = {0};
-    int i;
-
-    assert (EthernetMACGet(hdr, strMAC) == 0);
-    sscanf(strMAC, "%x.%x.%x.%x.%x.%x", mac32, mac32 + 1, mac32 + 2, mac32 + 3,
-            mac32 + 4, mac32 + 5);
-
-    for (i = 0; i < 6; i++)
-        pkt[6+i] = mac32[i];
-}
-
 static BOOL sv_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
 {
     /* Update MAC */

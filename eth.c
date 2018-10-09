@@ -64,20 +64,6 @@ static BOOL eth_counting_hook(void * pDev, UINT8 *pBuf, UINT32 bufLen)
     return TRUE;
 }
 
-static void eth_srcmac_fill(INT32 hdr, UINT8 * pkt)
-{
-    UINT32 mac32[6];
-    char strMAC[20] = {0};
-    int i;
-
-    assert (EthernetMACGet(hdr, strMAC) == 0);
-    sscanf(strMAC, "%x.%x.%x.%x.%x.%x", mac32, mac32 + 1, mac32 + 2, mac32 + 3,
-            mac32 + 4, mac32 + 5);
-
-    for (i = 0; i < 6; i++)
-        pkt[6+i] = mac32[i];
-}
-
 static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len, UINT32 * cksum)
 {
     int i;

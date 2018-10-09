@@ -86,6 +86,7 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal);
 extern int cksum_buf_generate(char * buf, uint32_t bufLen);
 extern int cksum_buf_verify(char * buf, uint32_t bufLen);
 extern int timer_set(uint32_t freq, SEM_ID giveSem);
+extern void eth_srcmac_fill(INT32 hdr, UINT8 * pkt);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\
