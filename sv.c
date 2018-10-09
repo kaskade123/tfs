@@ -70,8 +70,8 @@ static void sv_init(void)
     /* Request handler */
 	pStatus->svFd = ethdev_get("sv");
 	assert (pStatus->svFd >= 0);
-	
-	pStatus->ethFd = ethdev_get("backplane");
+
+	pStatus->ethFd = ethdev_get("debug");
 	assert (pStatus->ethFd >= 0);
 	
 	/* Timer Request */
@@ -81,7 +81,15 @@ static void sv_init(void)
 	/* Initialize semaphore */
 	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 	assert(pStatus->muxSem != NULL);
-	
+
+	/* Configure ADC */
+	hsb_remote_reg_config(addr_get(), 0x7C00, 0x1 << addr_get());
+	hsb_remote_reg_config(addr_get(), 0x7C04, 0x2);
+	hsb_remote_reg_config(addr_get(), 0x7C40, 0x0);
+	hsb_remote_reg_config(addr_get(), 0x7C44, 0xFFFFFF);
+	hsb_remote_reg_config(addr_get(), 0x7C48, 0x1);
+	hsb_remote_reg_config(addr_get(), 0x7C4C, 0xFFFFFF);
+
 	/* Drop all the packets received */
 	assert(EthernetPktDrop(pStatus->svFd, 512) >= 0);
 	
