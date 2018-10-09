@@ -32,7 +32,7 @@ static int test_show_entry(int delay)
 
 static void lib_show_start(int delay)
 {
-	taskSpawn("tShow", 254, VX_SPE_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tShow", 254, VX_FP_TASK, 0x100000, test_show_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
 static int test_start_entry(int delay)
@@ -72,7 +72,7 @@ static int test_start_entry(int delay)
 
 void test_start(int delay)
 {
-	taskSpawn("tStart", 255, VX_SPE_TASK, 0x100000, test_start_entry, delay,0,0,0,0,0,0,0,0,0);
+	taskSpawn("tStart", 255, VX_FP_TASK, 0x100000, test_start_entry, delay,0,0,0,0,0,0,0,0,0);
 }
 
 void test_show(void)
