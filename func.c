@@ -79,6 +79,36 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
     }
 }
 
+static void _uart_print(UART_DEV_S * pDev, char * buf)
+{
+    INT32 hdr;
+    UINT8 pBuf[128];
+
+    hdr = DeviceRequest(pDev);
+    if (hdr < 0)
+        return;
+
+    memset(buf, 0x55, 128);
+
+    if (UARTConfig(hdr, 9600, 0))
+    {
+        DeviceRelease(hdr);
+        sprintf(buf, "UART(%s) FAIL\n", pDev->name);
+        return;
+    }
+
+    if (UARTSend(hdr, pBuf, 128) != 128)
+    {
+        DeviceRelease(hdr);
+        sprintf(buf, "UART(%s) FAIL\n", pDev->name);
+        return;
+    }
+
+    DeviceRelease(hdr);
+
+    sprintf(buf, "UART(%s) OK\n", pDev->name);
+}
+
 static void rh_print(char * buf)
 {
     INT32 hdr;
@@ -296,6 +326,8 @@ static void func_show(char * buf)
 			(FUNCPTR)_temperature_print);
 	type_print(SAC_DEVICE_TYPE_VOL_SENSOR, buf + strlen(buf),
 			(FUNCPTR)_voltage_print);
+	type_print(SAC_DEVICE_TYPE_UART, buf + strlen(buf),
+	        (FUNCPTR)_uart_print);
 	rh_print(buf + strlen(buf));
 	fram_print(buf + strlen(buf));
 	rtc_print(buf + strlen(buf));
