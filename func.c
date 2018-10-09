@@ -320,7 +320,8 @@ static void serial_test(char * str) {}
 
 static void func_start(void)
 {
-    hsb_remote_reg_config(addr_get(), 0x4, 0x3);
+    if (is_hmi())
+        hsb_remote_reg_config(addr_get(), 0x4, 0x3);
 }
 
 static void func_show(char * buf)
