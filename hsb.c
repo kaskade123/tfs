@@ -303,45 +303,42 @@ static void hsb_show(char * buf)
 
     hsb_suspend();
 
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "\n*********** HSB ***********\n");
+
     /*
      * Up Time
      */
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf),
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
             "\nUpTime : %u Second(s), maxRetry = %d\n", (uint32_t) time(NULL),
             pProfiling->maxRetry);
     /*
      * Title
      */
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "ADDRESS");
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "%8s\t", "ADDRESS");
     for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf),
-                PRINT_BUF_SIZE - strlen(buf), "%10d\t", i + 1);
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "\n");
+        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                "%10d\t", i + 1);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
     /*
      * Total counts
      */
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "RECVED");
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "%8s\t", "RECVED");
     for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf),
-                PRINT_BUF_SIZE - strlen(buf), "%10u\t",
-                pProfiling->rxCount[i]);
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "\n");
+        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                "%10u\t", pProfiling->rxCount[i]);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
     /*
      * Missing counts
      */
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "%8s\t", "MISSING");
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "%8s\t", "MISSING");
     for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf),
-                PRINT_BUF_SIZE - strlen(buf), "%10u\t",
-                pProfiling->rxMissing[i]);
-    snprintf(buf + strlen(buf),
-            PRINT_BUF_SIZE - strlen(buf), "\n");
+        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                "%10u\t", pProfiling->rxMissing[i]);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
 
     hsb_resume();
 }
