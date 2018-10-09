@@ -473,8 +473,8 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
     *pPointer++ = rand();
     *pPointer++ = 1;        /* Number */
     pUINT32 = (UINT32 *)pPointer;
-    *pUINT32++ = regAddr | 0x0F000000;
-    *pUINT32++ = regVal;
+    *pUINT32++ = cpu_to_be32(regAddr | 0x0F000000);
+    *pUINT32++ = cpu_to_be32(regVal);
     pPointer = (UINT8 *)pUINT32;
     pHdr->u.s.DLC = pPointer - pPkt - sizeof(*pHdr);
 
