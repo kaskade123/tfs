@@ -12,7 +12,7 @@ typedef struct sv_status
 static SV_STATUS_S * pStatus = NULL;
 
 #define PKT_BUF_SIZE	2048		/* SV packet buffer limit */
-#define SV_TIMER_FREQ	(96 * 50)   /* 96 samples per cycle */
+#define SV_TIMER_FREQ	2400        /* SV sample rate 1200sps */
 
 #define SV_POLLING_TASK_PRIORITY	40
 
