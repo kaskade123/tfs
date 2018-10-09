@@ -17,23 +17,46 @@
 #include "sacDev.h"
 #include "sacDevBus.h"
 
-typedef struct hsb_recv_pkt
+typedef struct hsb_recv_hdr
 {
-	UINT8	dstMac[6];
-	UINT8 	srcMac[6];
-	UINT32 	: 17;
-	UINT32	SRC : 4;
-	UINT32	DLC : 11;
+    UINT8   dstMac[6];
+    UINT8   srcMac[6];
+    union {
+        UINT32 u32;
+        struct {
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+            UINT32  DLC : 11;
+            UINT32  SRC : 4;
+            UINT32  : 17;
+#else
+            UINT32  : 17;
+            UINT32  SRC : 4;
+            UINT32  DLC : 11;
+#endif
+        } s;
+    } u;
 }__attribute((packed)) HSB_RECV_HEADER;
 
-typedef struct hsb_send_pkt
+typedef struct hsb_send_hdr
 {
-	UINT8	dstMac[6];
-	UINT8	srcMac[6];
-	UINT32	: 3;
-	UINT32 	PRI : 2;
-	UINT32	DST : 16;
-	UINT32	DLC : 11;
+    UINT8   dstMac[6];
+    UINT8   srcMac[6];
+    union {
+        UINT32 u32;
+        struct {
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+            UINT32  DLC : 11;
+            UINT32  DST : 16;
+            UINT32  PRI : 2;
+            UINT32      : 3;
+#else
+            UINT32      : 3;
+            UINT32  PRI : 2;
+            UINT32  DST : 16;
+            UINT32  DLC : 11;
+#endif
+        } s;
+    } u;
 }__attribute((packed)) HSB_SEND_HEADER;
 
 /* lib base function called by main module */

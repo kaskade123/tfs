@@ -465,8 +465,8 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
 
     pHdr->dstMac[5] = 2;
     pHdr->srcMac[5] = 1;
-    pHdr->PRI = 3;
-    pHdr->DST = 0x01 << addr;
+    pHdr->u.s.PRI = 3;
+    pHdr->u.s.DST = 0x01 << addr;
     pPointer = pPkt + sizeof(*pHdr);
     *pPointer++ = 0x02;     /* Config */
     *pPointer++ = rand();   /* Index */
@@ -476,7 +476,9 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
     *pUINT32++ = regAddr | 0x0F000000;
     *pUINT32++ = regVal;
     pPointer = (UINT8 *)pUINT32;
-    pHdr->DLC = pPointer - pPkt - sizeof(*pHdr);
+    pHdr->u.s.DLC = pPointer - pPkt - sizeof(*pHdr);
+
+    pHdr->u.u32 = cpu_to_be32(pHdr->u.u32);
 
     ret = EthernetSendPkt(hdr, pPkt, pPointer - pPkt);
     free(pPkt);
