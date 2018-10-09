@@ -288,6 +288,7 @@ static void fs_test(const char * path, char * str)
     sprintf(str, "%s : OK\t", path);
 }
 
+#if 0
 static void serial_test(char * str)
 {
     int fd;
@@ -313,6 +314,9 @@ static void serial_test(char * str)
 ends:
     close(fd);
 }
+#else
+static void serial_test(char * str) {}
+#endif
 
 static void func_start(void)
 {
