@@ -321,7 +321,8 @@ static void serial_test(char * str) {}
 static void func_start(void)
 {
     if (is_hmi())
-        hsb_remote_reg_config(addr_get(), 0x4, 0x3);
+        /* IRIG-B, positive, IRIG-B output enable, PPS output enable */
+        hsb_remote_reg_config(addr_get(), 0x4, 0x2BB);
 }
 
 static void func_show(char * buf)
