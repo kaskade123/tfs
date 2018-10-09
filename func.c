@@ -52,13 +52,13 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
         return;
 
     assert(VoltageGet(hdr, &vol) == 0);
-    
+
     DeviceRelease(hdr);
-    
+
     ratio = ((float)abs(vol - pDev->normal_voltage) * 100) / (float)pDev->normal_voltage;
 
     sprintf(buf, "%d/%d mV(%.2f%%)  ", vol, pDev->normal_voltage, ratio);
-    
+
     if ((ratio > 7) && (pDev->normal_voltage != 24000))
     {
     	int hdr = light_get("green2");
@@ -115,7 +115,7 @@ static void rh_print(char * buf)
     UINT32 rh;
     UINT32 ratio;
     RHSNR_DEV_S * pDev;
-    
+
     pDev = DescriptionGetByType(SAC_DEVICE_TYPE_RH_SENSOR, NULL);
     hdr = DeviceRequest(pDev);
     if (hdr < 0)
@@ -133,7 +133,7 @@ static void fram_print(char * buf)
     INT32 hdr;
     INT32 regRead, regWrite;
     MEMSPACE_DEV_S * pDev = NULL;
-    
+
 	do
 	{
 		pDev = DescriptionGetByType(SAC_DEVICE_TYPE_MEMSPACE, pDev);
@@ -183,7 +183,7 @@ static void rtc_print(char * str)
     INT32 hdr;
     INT32 t;
     RTC_DEV_S * pDev = NULL;
-    
+
     pDev = DescriptionGetByType(SAC_DEVICE_TYPE_RTC, NULL);
     hdr = DeviceRequest(pDev);
     if (hdr < 0)
@@ -196,7 +196,7 @@ static void rtc_print(char * str)
     }
 
     sprintf(str, "RTC : OK\t");
-    
+
 ends:
     DeviceRelease(hdr);
 }
@@ -205,14 +205,14 @@ static void irigb_print(char * str)
 {
     INT32 hdr;
     void * pDev = NULL;
-    
+
     if (is_hmi())
     {
         pDev = DescriptionGetByType(SAC_DEVICE_TYPE_IRIGB, NULL);
         hdr = DeviceRequest(pDev);
         if (hdr < 0)
             return;
-    
+
         if (IRIGBStatus(hdr))
             sprintf(str, "IRIGB : Failed\t");
         else
@@ -230,7 +230,7 @@ static void irigb_print(char * str)
         else
             sprintf(str, "IRIGB : OK\t");
     }
-    
+
     DeviceRelease(hdr);
 }
 
@@ -238,7 +238,7 @@ static void type_print(UINT16 type, char * buf, FUNCPTR _print)
 {
 	void * pDev = NULL;
 	int called = 0;
-	
+
 	do
 	{
 		pDev = DescriptionGetByType(type, pDev);
@@ -248,7 +248,7 @@ static void type_print(UINT16 type, char * buf, FUNCPTR _print)
 			_print(pDev, buf + strlen(buf));
 		}
 	}while(pDev != NULL);
-	
+
 	if (called)
 		sprintf(buf + strlen(buf), "\n");
 }
@@ -258,7 +258,7 @@ static void fs_test(const char * path, char * str)
     int fd;
     char filename[32];
     struct stat s;
-    
+
     sprintf(filename, "/%s/test", path);
 
     /* create one file in HRFS will have immediate commit */
@@ -268,23 +268,23 @@ static void fs_test(const char * path, char * str)
         sprintf(str, "%s : Open Fail\t", path);
         return;
     }
-    
+
     close(fd);
-    
+
     /* see if the file is really created */
     if (stat(filename, &s))
     {
         sprintf(str, "%s : Create Fail\t", path);
         return;
     }
-    
+
     /* remove this file */
     if (remove(filename))
     {
         sprintf(str, "%s : Remove Fail\t", path);
         return;
     }
-    
+
     sprintf(str, "%s : OK\t", path);
 }
 
@@ -300,7 +300,7 @@ static void serial_test(char * str)
         sprintf(str, "RS232 : Open Fail\t");
         return;
     }
-    
+
     memset(ch, 0x55, 128);
 
     if (write(fd, ch, 128) != 128)
