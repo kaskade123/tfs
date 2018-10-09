@@ -47,7 +47,7 @@ static int polling_task(void)
 	{
 		/* Wait for send is done */
 		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
-		
+
 		/* Receive all packets pending */
 		while (EthernetRecvPoll(pStatus->svFd, NULL) == -EAGAIN);
 	}
@@ -58,26 +58,26 @@ static void sv_init(void)
 	/* Only init once */
 	if (pStatus && pStatus->svInited)
 		return;
-	
+
 	if (pStatus == NULL)
 	{
 		pStatus = malloc(sizeof(*pStatus));
 		assert(pStatus);
 	}
-	
+
 	memset(pStatus, 0, sizeof(*pStatus));
-	
+
     /* Request handler */
 	pStatus->svFd = ethdev_get("sv");
 	assert (pStatus->svFd >= 0);
 
 	pStatus->ethFd = ethdev_get("debug");
 	assert (pStatus->ethFd >= 0);
-	
+
 	/* Timer Request */
 	pStatus->timerFd = timer_get();
 	assert(pStatus->timerFd >= 0);
-	
+
 	/* Initialize semaphore */
 	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
 	assert(pStatus->muxSem != NULL);
@@ -92,15 +92,15 @@ static void sv_init(void)
 
 	/* Drop all the packets received */
 	assert(EthernetPktDrop(pStatus->svFd, 512) >= 0);
-	
+
 	/* Hook the packet copier */
 	assert(EthernetHookDisable(pStatus->svFd) == 0);
 	assert(EthernetRecvHook(pStatus->svFd, sv_recv_hook) == 0);
 	assert(EthernetHookEnable(pStatus->svFd) == 0);
-	
+
 	/* Init done */
 	pStatus->svInited = TRUE;
-	
+
 	/* Start polling task */
 	taskSpawn("tSVPoll", SV_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
 }
@@ -114,7 +114,7 @@ static void sv_start(void)
 {
 	/* Basic SV initialize */
 	sv_init();
-	
+
 	/* Initialize a timer */
 	assert(TimerDisable(pStatus->timerFd) == 0);
 	assert(TimerFreqSet(pStatus->timerFd, SV_TIMER_FREQ) == 0);
