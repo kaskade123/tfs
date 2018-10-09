@@ -337,7 +337,8 @@ static void func_show(char * buf)
 	rtc_print(buf + strlen(buf));
 	irigb_print(buf + strlen(buf));
 	fs_test("tffs", buf + strlen(buf));
-	fs_test("mmc0:0", buf + strlen(buf));
+	fs_test("set", buf + strlen(buf));
+	fs_test("data", buf + strlen(buf));
 	serial_test(buf + strlen(buf));
 	sprintf(buf + strlen(buf), "\n");
 }
