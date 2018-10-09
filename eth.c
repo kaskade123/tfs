@@ -1,7 +1,7 @@
 #include "lib.h"
 
 #define ETH_DEV_COUNT	4
-#define ETH_DEV_PREFIX	"mms"
+#define ETH_DEV_PREFIX	"MMS"
 #define ETH_BUFFER_LEN	1600
 
 #define ETH_BW_LIMIT	10000000	/* BW limited to 10Mbps */
