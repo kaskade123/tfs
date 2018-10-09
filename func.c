@@ -61,7 +61,7 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
 
     if ((ratio > 7) && (pDev->normal_voltage != 24000))
     {
-    	int hdr = light_get("green2");
+    	int hdr = light_get("LED3");
     	if (hdr >= 0)
     	{
     		LightOn(hdr);
@@ -70,7 +70,7 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
     }
     else if ((ratio > 15) && (pDev->normal_voltage == 24000))
     {
-    	int hdr = light_get("green2");
+    	int hdr = light_get("LED3");
     	if (hdr >= 0)
     	{
     		LightOn(hdr);
