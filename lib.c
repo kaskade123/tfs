@@ -65,7 +65,7 @@ static void light_start(void)
 	int redFd;
 
 	/* Get two light handler */
-	redFd = light_get("red");
+	redFd = light_get("LED1");
 	assert(redFd >= 0);
 
 	/* Turn On Red Light */
@@ -79,7 +79,7 @@ static void light_blink(void)
 {
 	int greenFd;
 
-	greenFd = light_get("green");
+	greenFd = light_get("LED2");
 	assert(greenFd >= 0);
 
 	/* Start blink task */
