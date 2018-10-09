@@ -6,6 +6,7 @@ MODULE_DECLARE(ion);
 MODULE_DECLARE(func);
 MODULE_DECLARE(eth);
 MODULE_DECLARE(sv);
+MODULE_DECLARE(manage);
 
 #define PRINT_BUF_SIZE  65536
 
@@ -50,6 +51,7 @@ static int test_start_entry(int delay)
 	}
 	else
 	    eth_register();
+	manage_register();
 	func_register();
 
 	/* delay for some time */
