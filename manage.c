@@ -4,10 +4,9 @@
 #define MANAGE_BUFFER_LEN   1600
 #define MANAGE_MAX_NODE     4
 
-#define MANAGE_BW_LIMIT     5000000     /* BW limited to 5Mbps */
-#define MANAGE_PKT_LEN      500         /* Packet Length */
-#define MANAGE_PKT_CNT      1           /* Packets Send or Recv in one run */
-#define MANAGE_TIMER_FREQ   (MANAGE_BW_LIMIT / 8 / MANAGE_PKT_LEN / MANAGE_PKT_CNT * MANAGE_MAX_NODE)
+#define MANAGE_BW_LIMIT     2000000     /* BW limited to 2Mbps */
+#define MANAGE_PKT_LEN      1000         /* Packet Length */
+#define MANAGE_TIMER_FREQ   (MANAGE_BW_LIMIT / 8 / MANAGE_PKT_LEN * MANAGE_MAX_NODE)
 
 typedef struct manage_node
 {
