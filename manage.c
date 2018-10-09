@@ -207,6 +207,8 @@ static void manage_show(char * buf)
     for (i = 0; i < MANAGE_MAX_NODE; i++)
     {
         MANAGE_NODE_S * pNode = &pStatus->nodes[i];
+        if (is_node_empty(i))
+            continue;
         snprintf(buf + strlen(buf), 0x10000 - strlen(buf),
                 "%02X:%02X:%02X:%02X:%02X:%02X : Recv %d; Missing %d\n",
                 pNode->src_mac[0], pNode->src_mac[1], pNode->src_mac[2],
