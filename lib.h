@@ -15,6 +15,7 @@
 #include <arch/ppc/vxPpcLib.h>
 
 #include "sacDev.h"
+#include "sacDevBus.h"
 
 typedef struct hsb_recv_pkt
 {
@@ -59,6 +60,8 @@ extern STATUS queue_add(QJOB * pJob);
 void calc_fletcher32(unsigned char *data, unsigned n_bytes, unsigned * cksum);
 int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert);
 int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal);
+extern int cksum_buf_generate(char * buf, uint32_t bufLen);
+extern int cksum_buf_verify(char * buf, uint32_t bufLen);
 
 /* Module declare */
 #define MODULE_DECLARE(name)	\
