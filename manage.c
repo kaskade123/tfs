@@ -191,7 +191,7 @@ void manage_start(void)
     taskSpawn("tManageSend", 100, VX_FP_TASK, 0x4000, manage_send_entry,
             1,2,3,4,5,6,7,8,9,10);
 
-    taskSpawn("tManageRecv", 100, VX_FP_TASK, 0x4000, manage_recv_entry,
+    taskSpawn("tManageRecv", 50, VX_FP_TASK, 0x4000, manage_recv_entry,
             1,2,3,4,5,6,7,8,9,10);
 }
 
