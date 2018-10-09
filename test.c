@@ -42,8 +42,8 @@ static int test_start_entry(int delay)
 	lib_init();
 
 	/* Register modules */
-	hsb_register();
 	canhcb_register();
+	hsb_register();
 	if (is_cpu())
 	{
 	    ion_register();
