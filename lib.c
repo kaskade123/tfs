@@ -23,7 +23,7 @@ static void list_init(void)
 
 static void ip_setup(void)
 {
-	int fd = ethdev_get("backplane");
+	int fd = ethdev_get("debug");
 	char ip_addr[16];
 
 	assert(fd >= 0);
