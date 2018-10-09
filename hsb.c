@@ -1,276 +1,356 @@
 #include "lib.h"
 
-typedef struct hsb_status
+#define HSB_PKT_DLC_MAX     1600
+#define HSB_SFP_DLC_PER_CHN 24
+#define HSB_MAX_NODE        8
+
+#define HSB_BANDWIDTH       10000000
+#define HSB_SFP_CNT         24
+
+typedef struct hsb_profiling
 {
-	int hsbFd;
-	int timerFd;
-	BOOL hsbInited;
-	UINT8 * pktBuf;
-	UINT64 pktSend;
-	UINT64 pktRecv;
-	SEM_ID muxSem;
-	QJOB job;
-	UINT32 in_process;
-} HSB_STATUS_S;
+    int         hsbFd;
+    int         rxTimerFd;
+    SEM_ID      txSem;
+    SEM_ID      rxSem;
+    TASK_ID     txTask;
+    TASK_ID     rxTask;
+    TASK_ID     showTask;
+    HSB_SEND_HEADER * txPkt;
+    HSB_RECV_HEADER * rxPkt;
+    uint16_t    rxIdx[HSB_MAX_NODE];
+    uint32_t    rxCount[HSB_MAX_NODE];
+    uint32_t    rxMissing[HSB_MAX_NODE];
+    uint32_t    maxRetry;
+}HSB_PROFILING_S;
 
-static HSB_STATUS_S * pStatus = NULL;
+static HSB_PROFILING_S * pProfiling = NULL;
 
-#define PKT_BUF_SIZE	2048					/* HSB packet buffer limit */
-#define HSB_BW_LIMIT	40000000				/* BW limited to 40Mbps */
-#define HSB_SFP_COUNT	25						/* SFP info count */
-#define HSB_PKT_LEN		(20+4+24*HSB_SFP_COUNT)	/* HSB Packet Length */
-#define HSB_TIMER_FREQ	(HSB_BW_LIMIT / 8 / HSB_PKT_LEN)
-
-#define HSB_POLLING_TASK_PRIORITY	40
-
-#ifdef DISPLAY
-static void hsb_rpkt_display(void * arg)
+static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
 {
-	HSB_RECV_HEADER * pHdr = arg;
-	UINT8 * buf;
-	int i;
+    HSB_RECV_HEADER * pPkt = pProfiling->rxPkt;
+    uint8_t * pktData = (uint8_t *)pProfiling->rxPkt + sizeof(HSB_RECV_HEADER);
+    uint16_t idx;
+    uint16_t expect_idx;
+    uint8_t src;
 
-	printf("HSB Packet Received : SRC = %d, DLC = %d, DATA = ",
-			pHdr->SRC, pHdr->DLC);
+    /* store packet locally */
+    memcpy(pProfiling->rxPkt, buf, bufLen);
 
-	buf = (UINT8 *)arg + sizeof(*pHdr);
+    pPkt->u.u32 = be32_to_cpu(pPkt->u.u32);
 
-    for (i = 0; i < pHdr->DLC; i++)
-        printf("%02X ", buf[i]);
-    printf("\n");
+    /*
+     * Only decode SFP Info packets
+     */
+    if (pktData[0] != 0x51)
+        return TRUE;
+
+    /*
+     * Check if SRC is a supported address
+     */
+    if (pPkt->u.s.SRC > HSB_MAX_NODE || pPkt->u.s.SRC == 0)
+    {
+        printf("pPkt->SRC = %d is invalid\n", pPkt->u.s.SRC);
+        return TRUE;
+    }
+    src = pPkt->u.s.SRC - 1;
+
+    /*
+     * form idx from packet
+     */
+    idx = pktData[2];
+    idx = idx << 8;
+    idx |= pktData[1];
+
+    /*
+     * Validate the data
+     */
+    if(cksum_buf_verify((char *)&pktData[4], HSB_SFP_DLC_PER_CHN * pktData[3]))
+    {
+        /*
+         * data validate failed, this is not our packet
+         */
+        return TRUE;
+    }
+
+    /*
+     * Update rx counter
+     */
+    pProfiling->rxCount[src] ++;
+
+    if (pProfiling->rxCount[src] == 1)
+    {
+        /*
+         * This is the first packet, just update the idx and exit
+         */
+        pProfiling->rxIdx[src] = idx;
+    }
+    else
+    {
+        /*
+         * Check the missing packets if there is
+         */
+        expect_idx = pProfiling->rxIdx[src] + 1;
+        pProfiling->rxIdx[src] = idx;
+        if (expect_idx != idx)
+            logMsg("Exp %d, Recv %d, DLC = %d\n", expect_idx, idx, pPkt->u.s.DLC, 4,5,6);
+        if (expect_idx < idx)
+            pProfiling->rxMissing[src] += (idx - expect_idx);
+        else if (expect_idx > idx)
+            /*
+             * there is a roll back in counting
+             */
+        pProfiling->rxMissing[src] += 0xFFFF - expect_idx + idx + 1;
+    }
+
+    return TRUE;
 }
 
-static void hsb_spkt_display(void * arg)
+static int hsb_form_sfp_pkt(HSB_SEND_HEADER * pPkt, uint8_t priority, uint16_t dst, uint16_t idx, uint8_t sfp_count)
 {
-	HSB_SEND_HEADER * pHdr = arg;
-	UINT8 * buf;
-    int i;
+    uint8_t * pktData = (uint8_t *)pPkt + sizeof(HSB_SEND_HEADER);
+    /*
+     * Initialize packet header
+     */
+    memset(pPkt, 0, sizeof(*pPkt));
 
-    printf("HSB Packet Sent : DST = 0x%X, DLC = %d, DATA = ",
-            pHdr->DST, pHdr->DLC);
+    /*
+     * Prepare packet header
+     */
+    pPkt->dstMac[5] = 2;
+    pPkt->srcMac[5] = 1;
 
-    buf = (UINT8 *)arg + sizeof(*pHdr);
+    pPkt->u.s.PRI = priority;
+    pPkt->u.s.DST = dst & 0xFFFF;
 
-    for (i = 0; i < pHdr->DLC; i++)
-        printf("%02X ", buf[i]);
-    printf("\n");
-}
-#else
-#define hsb_rpkt_display(arg)
-#define hsb_spkt_display(arg)
-#endif
+    /*
+     * Calculate SFP packet DLC from sfp_count
+     */
+    pPkt->u.s.DLC = 4 + HSB_SFP_DLC_PER_CHN * sfp_count;
 
-static UINT32 pkt_len(void * arg)
-{
-	HSB_SEND_HEADER * pHdr = arg;
+    pPkt->u.u32 = cpu_to_be32(pPkt->u.u32);
 
-	return pHdr->DLC + sizeof(*pHdr);
-}
+    /*
+     * Form SFP packet
+     */
+    pktData[0] = 0x51;                    /* SFP */
+    pktData[1] = idx & 0xFF;              /* INDEX(LSB) */
+    pktData[2] = ((idx & 0xFF00) >> 8);   /* INDEX(MSB) */
+    pktData[3] = sfp_count;               /* SFP_Count */
 
-static UINT8 * hsb_send_prepare(UINT8 pri, UINT8 dst, UINT16 dlc)
-{
-	HSB_SEND_HEADER * pHdr;
-
-	memset(pStatus->pktBuf, 0, PKT_BUF_SIZE);
-
-	pHdr = (HSB_SEND_HEADER *)pStatus->pktBuf;
-
-    pHdr->dstMac[5] = 2;
-    pHdr->srcMac[5] = 1;
-
-	pHdr->PRI = pri;
-	if (dst)
-		pHdr->DST = 0x0001 << dst;
-	else
-		pHdr->DST = 0xFFFF;
-	pHdr->DLC = dlc;
-
-	return pStatus->pktBuf + sizeof(*pHdr);
+    /*
+     * Stuff randomized data with cksum
+     */
+    return cksum_buf_generate((char *)&pktData[4], HSB_SFP_DLC_PER_CHN * sfp_count);
 }
 
-static void hsb_send_pkt(void)
+int hsb_display_sfp_pkt(uint32_t sfp_count)
 {
-    int ret;
-	hsb_spkt_display(pStatus->pktBuf);
+    HSB_SEND_HEADER * pPkt = NULL;
+    char * pBuf;
+    char * display_buffer = NULL;
+    int ret = 0, i;
 
-	wvEvent(1, "Send>", 6);
-    ret = EthernetSendPkt(pStatus->hsbFd, pStatus->pktBuf, pkt_len(pStatus->pktBuf));
-    wvEvent(1, "Send<", 6);
+    pPkt = malloc(1600);
+    if (pPkt == NULL)
+    {
+        ret = -ENOMEM;
+        goto exit;
+    }
+    memset(pPkt, 0, 1600);
+    pBuf = (char *)pPkt;
 
-    if (ret == 0)
-    	pStatus->pktSend++;
+    display_buffer = malloc(40960);
+    if (display_buffer == NULL)
+    {
+        ret = -ENOMEM;
+        goto exit;
+    }
+    memset(display_buffer, 0, 40960);
+
+    ret = hsb_form_sfp_pkt(pPkt, 3, 0xFFFF, 0, sfp_count);
+    if (ret)
+        goto exit;
+
+    for (i = 0; i < 4 + HSB_SFP_DLC_PER_CHN * sfp_count + sizeof(*pPkt); i++)
+    {
+        if ((i % 32) == 0)
+            sprintf(display_buffer + strlen(display_buffer), "\n0x%08X : ", i);
+        sprintf(display_buffer + strlen(display_buffer), "%02X ", pBuf[i]);
+    }
+    sprintf(display_buffer + strlen(display_buffer), "\n");
+    logMsg(display_buffer, 1,2,3,4,5,6);
+
+exit:
+    if (pPkt)
+        free(pPkt);
+    if (display_buffer)
+        free(display_buffer);
+    return ret;
 }
 
-static BOOL hsb_recv_hook(void * pDev, UINT8 *buf, UINT32 bufLen)
+static int hsb_send_task(int fd, int priority, int dst, int sfp_count)
 {
-#if 1
-	HSB_RECV_HEADER * pHdr = (HSB_RECV_HEADER *)buf;
+    HSB_SEND_HEADER * pPkt;
+    uint16_t idx = 0;
 
-	/* Only acknowledge the packets sent from ourselves */
-	if (pHdr->SRC == addr_get() && buf[sizeof(*pHdr)] == 0x51 && buf[sizeof(*pHdr) + 3] == HSB_SFP_COUNT)
-	{
-		pStatus->pktRecv++;
-	}
-#else
-	++pktRecv;
-#endif
+    pPkt = pProfiling->txPkt;
 
-	return TRUE;
+    FOREVER
+    {
+        uint32_t retry = 0;
+        semTake(pProfiling->txSem, WAIT_FOREVER);
+        assert(hsb_form_sfp_pkt(pPkt, priority, dst, idx ++, sfp_count) == 0);
+        while(EthernetSendPkt(fd, (uint8_t *)pPkt, 4 + HSB_SFP_DLC_PER_CHN * sfp_count + sizeof(*pPkt)))
+        {
+            retry ++;
+            taskDelay(1);
+        }
+        if (retry > pProfiling->maxRetry)
+            pProfiling->maxRetry = retry;
+    }
 }
 
-static void hsb_cfg_ends(UINT8 addr)
+static int hsb_recv_task(int fd)
 {
-	UINT8 * dp;
+    static uint32_t cnt = 0;
 
-	dp = hsb_send_prepare(3, addr, 4);
-	assert(dp != NULL);
+    /* Drop all the packets received */
+    assert(EthernetPktDrop(fd, 512) >= 0);
 
-    dp[0] = 0x02;
-    dp[1] = 0x00;
-    dp[2] = 0x00;
-    dp[3] = 0x00;
+    /* Hook the packet copier */
+    assert(EthernetHookDisable(fd) == 0);
+    assert(EthernetRecvHook(fd, hsb_Decoder) == 0);
+    assert(EthernetHookEnable(fd) == 0);
 
-    hsb_send_pkt();
-}
-
-static void hsb_send(void * arg)
-{
-	UINT8 * dp;
-
-	assert(pStatus->hsbInited == TRUE);
-
-	dp = hsb_send_prepare(3, addr_get(), 4 + 24 * HSB_SFP_COUNT);
-	assert(dp != NULL);
-	dp[0] = 0x51;	    					/* SFP */
-	dp[1] = rand();    						/* idx */
-	dp[2] = rand();    						/* idx */
-	dp[3] = HSB_SFP_COUNT;					/* count */
-	rand_range(dp+4, 24 * HSB_SFP_COUNT);	/* status */
-
-	hsb_send_pkt();
-
-	assert(semGive(pStatus->muxSem) == OK);
-	pStatus->in_process = 0;
-}
-
-static int polling_task(void)
-{
-	assert(pStatus->hsbInited == TRUE);
-	while(1)
-	{
-		/* Wait for send is done */
-		assert(semTake(pStatus->muxSem, WAIT_FOREVER) == OK);
-
-		/* Receive all packets pending */
-		while (EthernetRecvPoll(pStatus->hsbFd, NULL) == -EAGAIN);
-	}
-}
-
-static void hsb_init(void)
-{
-	/* Only init once */
-	if (pStatus && pStatus->hsbInited)
-		return;
-
-	if (pStatus == NULL)
-	{
-		pStatus = malloc(sizeof(*pStatus));
-		assert(pStatus);
-	}
-
-	memset(pStatus, 0, sizeof(*pStatus));
-
-    /* Request handler */
-	pStatus->hsbFd = ethdev_get("hsb");
-	assert (pStatus->hsbFd >= 0);
-
-	/* Timer Request */
-	pStatus->timerFd = timer_get();
-	assert(pStatus->timerFd >= 0);
-
-	/* Initialize global buffer */
-	pStatus->pktBuf = malloc(PKT_BUF_SIZE);
-	assert(pStatus->pktBuf != NULL);
-
-	/* Initialize semaphore */
-	pStatus->muxSem = semBCreate(SEM_Q_FIFO, SEM_EMPTY);
-	assert(pStatus->muxSem != NULL);
-
-	/* Make HSB quiet */
-	hsb_cfg_ends(addr_get());
-
-	/* Drop all the packets received */
-	assert(EthernetPktDrop(pStatus->hsbFd, 512) >= 0);
-
-	/* Hook the packet copier */
-	assert(EthernetHookDisable(pStatus->hsbFd) == 0);
-	assert(EthernetRecvHook(pStatus->hsbFd, hsb_recv_hook) == 0);
-	assert(EthernetHookEnable(pStatus->hsbFd) == 0);
-
-	/* Clear send and recv counter */
-	pStatus->pktSend = 0;
-	pStatus->pktRecv = 0;
-
-	/* Init done */
-	pStatus->hsbInited = TRUE;
-
-	/* Start polling task */
-	taskSpawn("tHSBPoll", HSB_POLLING_TASK_PRIORITY, 0, 0x40000, polling_task, 0,0,0,0,0,0,0,0,0,0);
-}
-
-static void hsb_timer_hook(int arg)
-{
-	if (pStatus->in_process == 0)
-	{
-		pStatus->in_process = 1;
-		pStatus->job.func = hsb_send;
-		QJOB_SET_PRI(&pStatus->job, 20);
-		queue_add(&pStatus->job);
-	}
+    FOREVER
+    {
+        semTake(pProfiling->rxSem, WAIT_FOREVER);
+        /* Receive all pending packets */
+		while (EthernetRecvPoll(fd, NULL) == -EAGAIN)
+		    ;
+		if (++cnt >= HSB_MAX_NODE)
+		{
+		    cnt = 0;
+		    semGive(pProfiling->txSem);
+		}
+    }
 }
 
 static void hsb_start(void)
 {
-	/* Basic HSB initialize */
-	hsb_init();
+    pProfiling = (HSB_PROFILING_S *)malloc(sizeof(*pProfiling));
+    assert(pProfiling != NULL);
 
-	/* Initialize a timer */
-	assert(TimerDisable(pStatus->timerFd) == 0);
-	assert(TimerFreqSet(pStatus->timerFd, HSB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(pStatus->timerFd,hsb_timer_hook, 0) == 0);
-	assert(TimerEnable(pStatus->timerFd) == 0);
+    memset(pProfiling, 0, sizeof(*pProfiling));
+
+    pProfiling->txSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
+    assert(pProfiling->txSem != NULL);
+
+    pProfiling->rxSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
+    assert(pProfiling->rxSem != NULL);
+
+    pProfiling->txPkt = (HSB_SEND_HEADER *)memalign(4, sizeof(*pProfiling->txPkt) + HSB_PKT_DLC_MAX);
+    assert (pProfiling->txPkt != NULL);
+
+    pProfiling->rxPkt = (HSB_RECV_HEADER *)memalign(4, sizeof(*pProfiling->rxPkt) + HSB_PKT_DLC_MAX);
+    assert (pProfiling->rxPkt != NULL);
+
+    pProfiling->hsbFd = ethdev_get("hsb");
+    assert(pProfiling->hsbFd >= 0);
+
+    /*
+     * create tx and rx task
+     */
+    pProfiling->txTask = taskSpawn("tHsbSend", 50, VX_FP_TASK, 0x4000, hsb_send_task,
+            pProfiling->hsbFd, 3, 0xFFFF, HSB_SFP_CNT,5,6,7,8,9,10);
+    assert(pProfiling->txTask != TASK_ID_ERROR);
+    pProfiling->rxTask = taskSpawn("tHsbRecv", 50, VX_FP_TASK, 0x4000, hsb_recv_task,
+            pProfiling->hsbFd, 2,3,4,5,6,7,8,9,10);
+    assert(pProfiling->rxTask != TASK_ID_ERROR);
+
+    /*
+     * calculate tx frequency and set the timer
+     */
+    do
+    {
+        uint32_t pkt_len, tx_freq, rx_freq;
+        pkt_len = sizeof(HSB_SEND_HEADER) - 4 + 4 + HSB_SFP_DLC_PER_CHN * HSB_SFP_CNT + 4;
+        tx_freq = HSB_BANDWIDTH / 8 / pkt_len;
+        rx_freq = tx_freq * HSB_MAX_NODE;
+        pProfiling->rxTimerFd = timer_set(rx_freq, pProfiling->rxSem);
+        assert(pProfiling->rxTimerFd >= 0);
+    }while(0);
 }
 
-static void hsb_sender_suspend(void)
+static void hsb_suspend(void)
 {
-	/* check if HSB inited */
-	assert(pStatus->hsbInited);
-
-	/* Make sure all packets sent is received */
-	assert(TimerDisable(pStatus->timerFd) == 0);
-	taskDelay(1);
-	assert(semGive(pStatus->muxSem) == OK);
+    if (pProfiling)
+        TimerDisable(pProfiling->rxTimerFd);
 }
 
-static void hsb_sender_resume(void)
+static void hsb_resume(void)
 {
-	/* Re-enable timer */
-	assert(TimerEnable(pStatus->timerFd) == 0);
+    if (pProfiling)
+        TimerEnable(pProfiling->rxTimerFd);
 }
 
 static void hsb_show(char * buf)
 {
-	hsb_sender_suspend();
+    int i;
 
-	sprintf(buf, "\n"
-			"*********** HSB ***********\n"
-			"Total Send Pkts        : %llu\n"
-			"Total Recv Pkts        : %llu\n"
-			"Total Missing Pkts     : %llu\n",
-			pStatus->pktSend, pStatus->pktRecv,
-			pStatus->pktSend - pStatus->pktRecv);
+    assert(pProfiling != NULL);
 
-	hsb_sender_resume();
+    hsb_suspend();
+
+    /*
+     * Up Time
+     */
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf),
+            "\nUpTime : %u Second(s), maxRetry = %d\n", (uint32_t) time(NULL),
+            pProfiling->maxRetry);
+    /*
+     * Total send and recv
+     */
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf),
+            "Total Sent : %10d, Total Recv : %10d\n", *(uint32_t *) 0x80000308,
+            *(uint32_t *) 0x80000304);
+    /*
+     * Title
+     */
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "%8s\t", "ADDRESS");
+    for (i = 0; i < HSB_MAX_NODE; i++)
+        snprintf(buf + strlen(buf),
+                0x10000 - strlen(buf), "%10d\t", i + 1);
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "\n");
+    /*
+     * Total counts
+     */
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "%8s\t", "RECVED");
+    for (i = 0; i < HSB_MAX_NODE; i++)
+        snprintf(buf + strlen(buf),
+                0x10000 - strlen(buf), "%10u\t",
+                pProfiling->rxCount[i]);
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "\n");
+    /*
+     * Missing counts
+     */
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "%8s\t", "MISSING");
+    for (i = 0; i < HSB_MAX_NODE; i++)
+        snprintf(buf + strlen(buf),
+                0x10000 - strlen(buf), "%10u\t",
+                pProfiling->rxMissing[i]);
+    snprintf(buf + strlen(buf),
+            0x10000 - strlen(buf), "\n");
+
+    hsb_resume();
 }
 
 MODULE_REGISTER(hsb);
