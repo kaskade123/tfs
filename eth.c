@@ -6,22 +6,20 @@
 
 #define ETH_BW_LIMIT	2000000	    /* BW limited to 2Mbps */
 #define ETH_PKT_LEN		1500		/* Packet Length */
-#define ETH_PKT_CNT     16          /* Packets Send or Recv in one run */
-#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN / ETH_PKT_CNT * 2)
+#define ETH_TIMER_FREQ	(ETH_BW_LIMIT / 8 / ETH_PKT_LEN * 2)
 
 typedef struct eth_status
 {
 	BOOL 	ethInited;
 	INT32 	hdr[ETH_DEV_COUNT];		/* Ethernet device handler */
 	UINT8 * pkt; 	                /* Ethernet packet buffer */
+	SEM_ID  rxSem;
 	UINT32 	pktCksum[ETH_DEV_COUNT];/* Ethernet packet cksum */
 	UINT32 	pktSent[ETH_DEV_COUNT]; /* Ethernet packet sent */
 	UINT32 	pktRecv[ETH_DEV_COUNT];	/* Ethernet packet received */
 	UINT32 	pktSendFail[ETH_DEV_COUNT]; /* Ethernet packet send fail */
 	UINT32  pktRecvFail[ETH_DEV_COUNT]; /* Ethernet packet recv fail */
 	INT32 	timerFd;				/* Timer Handler */
-	QJOB 	job;					/* job queue */
-	atomic_t in_process;
 }ETH_STATUS_S;
 
 static ETH_STATUS_S * pStatus = NULL;
@@ -88,62 +86,38 @@ static int eth_send_random(INT32 hdr, UINT8 * pkt, UINT32 pkt_len, UINT32 * cksu
     return EthernetSendPkt(hdr, pkt, pkt_len);
 }
 
-static void eth_send_task(void * arg)
+static int eth_task_entry(void)
 {
-	int i;
-	/* Send out one packet for each port */
-	for (i = 0; i < ETH_DEV_COUNT; i++)
-	{
-	    if (pStatus->hdr[i] >= 0)
-	    {
-	        int j;
-	        for (j = 0; j < ETH_PKT_CNT; j++)
-	        {
+    uint32_t cnt = 0;
+    FOREVER
+    {
+        int i;
+
+        semTake(pStatus->rxSem, WAIT_FOREVER);
+        cnt ++;
+        for (i = 0; i < ETH_DEV_COUNT; i++)
+        {
+            uint32_t pktLimit = 32;
+            if (pStatus->hdr[i] < 0)
+                continue;
+            EthernetRecvPoll(pStatus->hdr[i], &pktLimit);
+            if (cnt >= 2)
+            {
                 if (eth_send_random(pStatus->hdr[i], pStatus->pkt, ETH_PKT_LEN, &pStatus->pktCksum[i]))
                     pStatus->pktSendFail[i]++;
                 else
                     pStatus->pktSent[i]++;
-	        }
-	    }
-	}
+            }
+        }
 
-    /* Enable next run of packet sending */
-    vxAtomicSet(&pStatus->in_process, 0);
-}
-
-static int eth_poll_at_least(int idx, int num)
-{
-    UINT32 pktRecved = 0;
-    UINT32 cnt = 0;
-    int status;
-    do
-    {
-        UINT32 pktLimit = 32;
-        status = EthernetRecvPoll(pStatus->hdr[idx], &pktLimit);
-        if (status == 0 || status == -EAGAIN)
-            pktRecved += pktLimit;
-        cnt ++;
-    }while(pktRecved < num && cnt < 10);
-
-    return pktRecved;
-}
-
-static void eth_recv_task(void * arg)
-{
-    int i;
-
-    /* Receive all packets pending */
-    for (i = 0; i < ETH_DEV_COUNT; i++)
-    {
-        if (pStatus->hdr[i] >= 0)
-            eth_poll_at_least(i, ETH_PKT_CNT);
+        if (cnt >= 2)
+            cnt = 0;
     }
 
-    /* Enable next run of packet sending */
-    vxAtomicSet(&pStatus->in_process, 0);
+    return 0;
 }
 
-static void eth_init(void)
+static void eth_start(void)
 {
 	int i;
 
@@ -157,12 +131,10 @@ static void eth_init(void)
 	}
 
 	memset(pStatus, 0, sizeof(*pStatus));
+	pStatus->rxSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
+	assert(pStatus->rxSem);
 
 	pStatus->ethInited = FALSE;
-	pStatus->timerFd = timer_get();
-	assert(pStatus->timerFd >= 0);
-
-	vxAtomicSet(&pStatus->in_process, 0);
 
 	for (i = 0; i < ETH_DEV_COUNT; i++)
 	{
@@ -193,34 +165,13 @@ static void eth_init(void)
 		assert(EthernetHookEnable(pStatus->hdr[i]) == 0);
 	}
 
+    taskSpawn("tEthLoopback", 50, VX_FP_TASK, 0x4000, eth_task_entry,
+            1,2,3,4,5,6,7,8,9,10);
+
+	pStatus->timerFd = timer_set(ETH_TIMER_FREQ, pStatus->rxSem);
+	assert(pStatus->timerFd >= 0);
+
 	pStatus->ethInited = TRUE;
-}
-
-static void eth_timer_hook(int arg)
-{
-    if (vxAtomicCas(&pStatus->in_process, 0, 1))
-	{
-        if (pStatus->job.func == eth_send_task)
-            pStatus->job.func = eth_recv_task;
-        else
-            pStatus->job.func = eth_send_task;
-		QJOB_SET_PRI(&pStatus->job, 20);
-		queue_add(&pStatus->job);
-	}
-}
-
-static void eth_start(void)
-{
-	eth_init();
-
-	if (pStatus->ethInited)
-	{
-		/* Initialize a timer */
-		assert(TimerDisable(pStatus->timerFd) == 0);
-		assert(TimerFreqSet(pStatus->timerFd, ETH_TIMER_FREQ) == 0);
-		assert(TimerISRSet(pStatus->timerFd, eth_timer_hook, 0) == 0);
-		assert(TimerEnable(pStatus->timerFd) == 0);
-	}
 }
 
 static void eth_sender_suspend(void)
@@ -231,7 +182,6 @@ static void eth_sender_suspend(void)
 	/* Make sure all packets sent is received */
 	assert(TimerDisable(pStatus->timerFd) == 0);
 	taskDelay(1);
-    eth_recv_task(NULL);
 }
 
 static void eth_sender_resume(void)
