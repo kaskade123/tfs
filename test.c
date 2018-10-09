@@ -43,10 +43,13 @@ static int test_start_entry(int delay)
 	/* Register modules */
 	hsb_register();
 	canhcb_register();
-    ion_register();
-    eth_register();
 	if (is_cpu())
+	{
+	    ion_register();
 	    sv_register();
+	}
+	else
+	    eth_register();
 	func_register();
 
 	/* delay for some time */
