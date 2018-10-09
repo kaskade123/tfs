@@ -130,7 +130,7 @@ static BOOL manage_recv_hook(void * pDev, UINT8 * pBuf, UINT32 bufLen)
     pNode->recved ++;
 
     if (pNode->recved != 1)
-        pNode->missing = curr_idx - pNode->idx - 1;
+        pNode->missing += curr_idx - pNode->idx - 1;
 
     pNode->idx = curr_idx;
 
