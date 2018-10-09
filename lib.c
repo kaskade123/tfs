@@ -83,7 +83,7 @@ static void light_blink(void)
 	assert(greenFd >= 0);
 
 	/* Start blink task */
-	assert(taskSpawn("tLight", 30, VX_SPE_TASK, 0x4000, blink_task, greenFd,
+	assert(taskSpawn("tLight", 30, VX_FP_TASK, 0x4000, blink_task, greenFd,
 			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
@@ -147,7 +147,7 @@ void queue_init(void)
 {
 	pQueue = jobQueueCreate(NULL);
 	assert(pQueue != NULL);
-	assert(taskSpawn("tQueue", 40, VX_SPE_TASK, 0x80000, jobQueueProcess,
+	assert(taskSpawn("tQueue", 40, VX_FP_TASK, 0x80000, jobQueueProcess,
 			(int)pQueue, 0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
