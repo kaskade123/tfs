@@ -156,9 +156,9 @@ static int manage_recv_entry(void)
         {
             uint32_t pktlimit = 32;
             ret = EthernetRecvPoll(pStatus->hdr, &pktlimit);
-            cnt += pktlimit;
         }while(ret == -EAGAIN);
-        if (cnt >= MANAGE_MAX_NODE)
+
+        if (++cnt >= MANAGE_MAX_NODE)
         {
             cnt = 0;
             semGive(pStatus->txSem);
