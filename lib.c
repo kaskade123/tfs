@@ -661,3 +661,39 @@ int cksum_buf_verify(char * buf, uint32_t bufLen)
     else
         return -EFAULT;
 }
+
+
+static void timer_hook_give_sem(int arg)
+{
+    SEM_ID giveSem = (SEM_ID)arg;
+    assert(giveSem != NULL);
+    semGive(giveSem);
+}
+
+int timer_set(uint32_t freq, SEM_ID giveSem)
+{
+    int fd;
+    int ret;
+
+    fd = timer_get();
+    if (fd < 0)
+        return -EMFILE;
+
+    ret = TimerDisable(fd);
+    if (ret)
+        goto fail;
+    ret = TimerFreqSet(fd, freq);
+    if (ret)
+        goto fail;
+    ret = TimerISRSet(fd, timer_hook_give_sem, (int)giveSem);
+    if (ret)
+        goto fail;
+    ret = TimerEnable(fd);
+    if (ret)
+        goto fail;
+
+    return fd;
+fail:
+    DeviceRelease(fd);
+    return ret;
+}
