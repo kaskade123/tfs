@@ -182,7 +182,7 @@ static void eth_init(void)
 	{
 		/* Get eth device name */
 		char ethName[5];
-		sprintf(ethName, "eth%d", i+1);
+		sprintf(ethName, "%s%d", ETH_DEV_PREFIX, i+1);
 
 		/* Request handler, if failed, this is CPU board */
 		pStatus->hdr[i] = ethdev_get(ethName);
