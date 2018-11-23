@@ -18,6 +18,11 @@ typedef struct hsb_profiling
     TASK_ID     showTask;
     HSB_SEND_HEADER * txPkt;
     HSB_RECV_HEADER * rxPkt;
+    uint32_t    cksumErr[4];
+    uint32_t    codingErr[4];
+    uint32_t    bitErr;
+    uint32_t    timingErr;
+    uint32_t    arbErr;
     uint16_t    rxIdx[HSB_MAX_NODE];
     uint32_t    rxCount[HSB_MAX_NODE];
     uint32_t    rxMissing[HSB_MAX_NODE];
@@ -26,6 +31,29 @@ typedef struct hsb_profiling
 
 static HSB_PROFILING_S * pProfiling = NULL;
 
+static void Update_Errs(void)
+{
+    uint32_t regVal = *(uint32_t *)0x40000300;
+    int i;
+
+    /* Write one clear */
+    *(uint32_t *)0x40000300 = regVal;
+
+    for (i = 0; i < 4; i++)
+    {
+        if (regVal & (0x01 << i))
+            pProfiling->codingErr[i] ++;
+        if (regVal & (0x10 << i))
+            pProfiling->cksumErr[i] ++;
+    }
+    if (regVal & 0x100)
+        pProfiling->arbErr ++;
+    if (regVal & 0x200)
+        pProfiling->timingErr ++;
+    if (regVal & 0x400)
+        pProfiling->bitErr ++;
+}
+
 static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
 {
     HSB_RECV_HEADER * pPkt = pProfiling->rxPkt;
@@ -33,6 +61,8 @@ static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
     uint16_t idx;
     uint16_t expect_idx;
     uint8_t src;
+
+    Update_Errs();
 
     /* store packet locally */
     memcpy(pProfiling->rxPkt, buf, bufLen);
@@ -226,6 +256,7 @@ static int hsb_recv_task(int fd)
     FOREVER
     {
         semTake(pProfiling->rxSem, WAIT_FOREVER);
+        Update_Errs();
         /* Receive all pending packets */
 		while (EthernetRecvPoll(fd, NULL) == -EAGAIN)
 		    ;
@@ -312,6 +343,26 @@ static void hsb_show(char * buf)
     snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
             "\nUpTime : %u Second(s), maxRetry = %d\n", (uint32_t) time(NULL),
             pProfiling->maxRetry);
+
+    /*
+     * FPGA statistics
+     */
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "Send : %10d, Recv : %10d\n", *(uint32_t *)0x40000308, *(uint32_t *)0x40000304);
+
+    /*
+     * Error statistics
+     */
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "bitErr : %10d, timingErr : %10d, arbErr : %10d\n",
+            pProfiling->bitErr, pProfiling->timingErr, pProfiling->arbErr);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "cksumErr[0,1,2,3]  : %10d, %10d, %10d, %10d\ncodingErr[0,1,2,3] : %10d, %10d, %10d, %10d\n",
+            pProfiling->cksumErr[0], pProfiling->cksumErr[1],
+            pProfiling->cksumErr[2], pProfiling->cksumErr[3],
+            pProfiling->codingErr[0], pProfiling->codingErr[1],
+            pProfiling->codingErr[2], pProfiling->codingErr[3]);
+
     /*
      * Title
      */
