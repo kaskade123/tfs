@@ -24,6 +24,7 @@ typedef struct hsb_profiling
     uint32_t    codingErr[4];
     uint32_t    optTx[OPT_MAX_CHN];
     uint32_t    optRx[OPT_MAX_CHN];
+    uint32_t    optMissing[OPT_MAX_CHN];
     uint32_t    bitErr;
     uint32_t    timingErr;
     uint32_t    arbErr;
@@ -70,6 +71,7 @@ static BOOL opt_decoder(uint8_t * data)
         r32 = *(uint32_t *)(data + (4 + 6 + i * 24));
         pProfiling->optTx[i] = be32_to_cpu(t32);
         pProfiling->optRx[i] = be32_to_cpu(r32);
+        pProfiling->optMissing[i] = pProfiling->optTx[i] - pProfiling->optRx[i];
     }
 
     return TRUE;
@@ -424,6 +426,7 @@ static void hsb_show(char * buf)
     array_print_title(buf, "CHN", OPT_MAX_CHN);
     array_print_data(buf, "TX", pProfiling->optTx, OPT_MAX_CHN);
     array_print_data(buf, "RX", pProfiling->optRx, OPT_MAX_CHN);
+    array_print_data(buf, "MISSING", pProfiling->optMissing, OPT_MAX_CHN);
 
     hsb_resume();
 }
