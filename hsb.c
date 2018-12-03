@@ -4,6 +4,8 @@
 #define HSB_SFP_DLC_PER_CHN 24
 #define HSB_MAX_NODE        8
 
+#define OPT_MAX_CHN         8
+
 #define HSB_BANDWIDTH       10000000
 #define HSB_SFP_CNT         24
 
@@ -20,6 +22,8 @@ typedef struct hsb_profiling
     HSB_RECV_HEADER * rxPkt;
     uint32_t    cksumErr[4];
     uint32_t    codingErr[4];
+    uint32_t    optTx[OPT_MAX_CHN];
+    uint32_t    optRx[OPT_MAX_CHN];
     uint32_t    bitErr;
     uint32_t    timingErr;
     uint32_t    arbErr;
@@ -54,6 +58,23 @@ static void Update_Errs(void)
         pProfiling->bitErr ++;
 }
 
+static BOOL opt_decoder(uint8_t * data)
+{
+    uint8_t cnt = data[3];
+    int i;
+
+    for (i = 0; i < cnt; i++)
+    {
+        uint32_t t32, r32;
+        t32 = *(uint32_t *)(data + (4 + 2 + i * 24));
+        r32 = *(uint32_t *)(data + (4 + 6 + i * 24));
+        pProfiling->optTx[i] = be32_to_cpu(t32);
+        pProfiling->optRx[i] = be32_to_cpu(r32);
+    }
+
+    return TRUE;
+}
+
 static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
 {
     HSB_RECV_HEADER * pPkt = pProfiling->rxPkt;
@@ -72,8 +93,11 @@ static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
     /*
      * Only decode SFP Info packets
      */
-    if (pktData[0] != 0x51)
+    if (pktData[0] != 0x51 && pktData[0] != 0x11)
         return TRUE;
+
+    if (pktData[0] == 0x11)
+        return opt_decoder(pktData);
 
     /*
      * Check if SRC is a supported address
@@ -326,10 +350,32 @@ static void hsb_resume(void)
         TimerEnable(pProfiling->rxTimerFd);
 }
 
+static void array_print_title(char * buf, const char * type, uint32_t len)
+{
+    uint32_t i;
+
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+             "%8s\t", type);
+    for (i = 0; i < len; i++)
+        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                "%10d\t", i + 1);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
+}
+
+static void array_print_data(char * buf, const char * type, uint32_t * data, uint32_t len)
+{
+    uint32_t i;
+
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+            "%8s\t", type);
+    for (i = 0; i < len; i++)
+        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                "%10u\t", data[i]);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
+}
+
 static void hsb_show(char * buf)
 {
-    int i;
-
     assert(pProfiling != NULL);
 
     hsb_suspend();
@@ -366,30 +412,18 @@ static void hsb_show(char * buf)
     /*
      * Title
      */
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-            "%8s\t", "ADDRESS");
-    for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-                "%10d\t", i + 1);
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
+    array_print_title(buf, "ADDRESS", HSB_MAX_NODE);
+    array_print_data(buf, "RECVED", pProfiling->rxCount, HSB_MAX_NODE);
+    array_print_data(buf, "MISSING", pProfiling->rxMissing, HSB_MAX_NODE);
+
     /*
-     * Total counts
+     * OPT
      */
     snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-            "%8s\t", "RECVED");
-    for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-                "%10u\t", pProfiling->rxCount[i]);
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
-    /*
-     * Missing counts
-     */
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-            "%8s\t", "MISSING");
-    for (i = 0; i < HSB_MAX_NODE; i++)
-        snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-                "%10u\t", pProfiling->rxMissing[i]);
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
+            "\n*********** OPT ***********\n");
+    array_print_title(buf, "CHN", OPT_MAX_CHN);
+    array_print_data(buf, "TX", pProfiling->optTx, OPT_MAX_CHN);
+    array_print_data(buf, "RX", pProfiling->optRx, OPT_MAX_CHN);
 
     hsb_resume();
 }
