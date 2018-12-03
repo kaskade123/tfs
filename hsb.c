@@ -404,12 +404,11 @@ static void hsb_show(char * buf)
     snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
             "bitErr : %10d, timingErr : %10d, arbErr : %10d\n",
             pProfiling->bitErr, pProfiling->timingErr, pProfiling->arbErr);
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-            "cksumErr[0,1,2,3]  : %10d, %10d, %10d, %10d\ncodingErr[0,1,2,3] : %10d, %10d, %10d, %10d\n",
-            pProfiling->cksumErr[0], pProfiling->cksumErr[1],
-            pProfiling->cksumErr[2], pProfiling->cksumErr[3],
-            pProfiling->codingErr[0], pProfiling->codingErr[1],
-            pProfiling->codingErr[2], pProfiling->codingErr[3]);
+    array_print_title(buf, "ErrLine", 4);
+    array_print_data(buf, "cksumErr", pProfiling->cksumErr, 4);
+    array_print_data(buf, "codingErr", pProfiling->codingErr, 4);
+    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf), "\n");
+
 
     /*
      * Title
