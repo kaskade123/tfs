@@ -488,6 +488,36 @@ int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal)
     return ret;
 }
 
+int hsb_cfg_done(UINT16 addr)
+{
+    UINT8 * pPointer = NULL;
+    HSB_SEND_HEADER * pHdr;
+    uint8_t * pPkt;
+    INT32 hdr = ethdev_get("hsb");
+    int ret;
+
+    pPkt = malloc(64);
+    assert(pPkt != NULL);
+    memset(pPkt, 0, 64);
+
+    pHdr = (HSB_SEND_HEADER *)pPkt;
+    pHdr->dstMac[5] = 2;
+    pHdr->srcMac[5] = 1;
+    pHdr->u.s.PRI = 3;
+    pHdr->u.s.DST = 0x01 << addr;
+    pHdr->u.s.DLC = 4;
+    pPointer = pPkt + sizeof(*pHdr);
+    *pPointer++ = 0x02;
+    *pPointer++ = 0x00;
+    *pPointer++ = 0x00;
+    *pPointer++ = 0x00;
+    pHdr->u.u32 = cpu_to_be32(pHdr->u.u32);
+    ret = EthernetSendPkt(hdr, pPkt, 64);
+    free(pPkt);
+    DeviceRelease(hdr);
+    return ret;
+}
+
 static const uint32_t crc_table[256] = {
 tole(0x00000000L), tole(0x77073096L), tole(0xee0e612cL), tole(0x990951baL),
 tole(0x076dc419L), tole(0x706af48fL), tole(0xe963a535L), tole(0x9e6495a3L),

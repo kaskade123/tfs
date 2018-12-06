@@ -85,6 +85,7 @@ extern STATUS queue_add(QJOB * pJob);
 void calc_fletcher32(unsigned char *data, unsigned n_bytes, unsigned * cksum);
 int status_chg_verify(UINT32 status_type, UINT32 status_ret_type, UINT32 assert);
 int hsb_remote_reg_config(UINT16 addr, UINT32 regAddr, UINT32 regVal);
+int hsb_cfg_done(UINT16 addr);
 extern int cksum_buf_generate(char * buf, uint32_t bufLen);
 extern int cksum_buf_verify(char * buf, uint32_t bufLen);
 extern int timer_set(uint32_t freq, SEM_ID giveSem);

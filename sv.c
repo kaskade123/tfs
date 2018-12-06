@@ -75,6 +75,7 @@ static void sv_init(void)
 	hsb_remote_reg_config(addr_get(), 0x7C44, 0xFFFFFF);
 	hsb_remote_reg_config(addr_get(), 0x7C48, 0x1);
 	hsb_remote_reg_config(addr_get(), 0x7C4C, 0xFFFFFF);
+	hsb_cfg_done(addr_get());
 
 	/* Drop all the packets received */
 	assert(EthernetPktDrop(pStatus->svFd, 512) >= 0);
