@@ -2,7 +2,7 @@
 
 #define HSB_PKT_DLC_MAX     1600
 #define HSB_SFP_DLC_PER_CHN 24
-#define HSB_MAX_NODE        8
+#define HSB_MAX_NODE        12
 
 #define OPT_MAX_CHN         8
 
