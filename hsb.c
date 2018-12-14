@@ -22,8 +22,9 @@ typedef struct hsb_profiling
     HSB_RECV_HEADER * rxPkt;
     uint32_t    cksumErr[4];
     uint32_t    codingErr[4];
-    uint32_t    optTx[OPT_MAX_CHN];
-    uint32_t    optRx[OPT_MAX_CHN];
+    uint32_t    optExists[HSB_MAX_NODE];
+    uint32_t    optTx[HSB_MAX_NODE][OPT_MAX_CHN];
+    uint32_t    optRx[HSB_MAX_NODE][OPT_MAX_CHN];
     uint32_t    ccExists[HSB_MAX_NODE];
     uint32_t    ccRx[HSB_MAX_NODE][HSB_MAX_NODE + 1];
     uint32_t    ccMissing[HSB_MAX_NODE][HSB_MAX_NODE +1];
@@ -62,7 +63,7 @@ static void Update_Errs(void)
         pProfiling->bitErr ++;
 }
 
-static BOOL opt_decoder(uint8_t * data)
+static BOOL opt_decoder(uint8_t * data, uint8_t src)
 {
     uint8_t cnt = data[3];
     int i;
@@ -72,9 +73,9 @@ static BOOL opt_decoder(uint8_t * data)
         uint32_t t32, r32;
         t32 = *(uint32_t *)(data + (4 + 2 + i * 24));
         r32 = *(uint32_t *)(data + (4 + 6 + i * 24));
-        pProfiling->optTx[i] = be32_to_cpu(t32);
-        pProfiling->optRx[i] = be32_to_cpu(r32);
-        pProfiling->optMissing[i] = pProfiling->optTx[i] - pProfiling->optRx[i];
+        pProfiling->optTx[src][i] = be32_to_cpu(t32);
+        pProfiling->optRx[src][i] = be32_to_cpu(r32);
+        pProfiling->optMissing[src][i] = pProfiling->optTx[i] - pProfiling->optRx[i];
     }
 
     return TRUE;
@@ -121,7 +122,10 @@ static BOOL hsb_Decoder(void * pDev, uint8_t * buf, uint32_t bufLen)
         return TRUE;
 
     if (pktData[0] == 0x11)
-        return opt_decoder(pktData);
+    {
+        pProfiling->optExists[pPkt->u.s.SRC - 1] = 1;
+        return opt_decoder(pktData, pPkt->u.s.SRC - 1);
+    }
     else if (pktData[0] == 0x44)
     {
         pProfiling->ccExists[pPkt->u.s.SRC - 1] = 1;
@@ -449,12 +453,18 @@ static void hsb_show(char * buf)
     /*
      * OPT
      */
-    snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
-            "\n*********** OPT ***********\n");
-    array_print_title(buf, "CHN", OPT_MAX_CHN);
-    array_print_data(buf, "TX", pProfiling->optTx, 0, OPT_MAX_CHN);
-    array_print_data(buf, "RX", pProfiling->optRx, 0, OPT_MAX_CHN);
-    array_print_data(buf, "MISSING", pProfiling->optMissing, 0, OPT_MAX_CHN);
+    for (i = 0; i < HSB_MAX_NODE; i++)
+    {
+        if (pProfiling->optExists[i])
+        {
+            snprintf(buf + strlen(buf), PRINT_BUF_SIZE - strlen(buf),
+                    "\n********** OPT.%d **********\n", i + 1);
+            array_print_title(buf, "CHN", OPT_MAX_CHN);
+            array_print_data(buf, "TX", pProfiling->optTx[i], 0, OPT_MAX_CHN);
+            array_print_data(buf, "RX", pProfiling->optRx[i], 0, OPT_MAX_CHN);
+            array_print_data(buf, "MISSING", pProfiling->optMissing[i], 0, OPT_MAX_CHN);
+        }
+    }
 
     /*
      * CC
