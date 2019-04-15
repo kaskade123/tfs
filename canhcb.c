@@ -98,8 +98,13 @@ static void canhcb_init(void)
 	
 	/* Get canhcb device handler */
 	pStatus->canhcbFd = canhcbdev_get();
-	assert(pStatus->canhcbFd >= 0);
-	
+	if (pStatus->canhcbFd < 0)
+	{
+	    free(pStatus);
+	    pStatus = NULL;
+	    return;
+	}
+
 	/* Timer Get */
 	pStatus->timerFd = timer_get();
 	assert(pStatus->timerFd >= 0);
@@ -172,13 +177,16 @@ static void canhcb_start(void)
 	/* Initialize canhcb */
 	canhcb_init();
 
-	/* Initialize timer, the throughput limited to 1Mbps. We send out a 100
-	 * bytes packet, which is 800 bits. To reach 1Mbps, we need to send out 1250
-	 * pkts one second. */
-	assert(TimerDisable(pStatus->timerFd) == 0);
-	assert(TimerFreqSet(pStatus->timerFd, CANHCB_TIMER_FREQ) == 0);
-	assert(TimerISRSet(pStatus->timerFd, canhcb_send, 0) == 0);
-	assert(TimerEnable(pStatus->timerFd) == 0);
+	if (pStatus)
+	{
+        /* Initialize timer, the throughput limited to 1Mbps. We send out a 100
+         * bytes packet, which is 800 bits. To reach 1Mbps, we need to send out 1250
+         * pkts one second. */
+        assert(TimerDisable(pStatus->timerFd) == 0);
+        assert(TimerFreqSet(pStatus->timerFd, CANHCB_TIMER_FREQ) == 0);
+        assert(TimerISRSet(pStatus->timerFd, canhcb_send, 0) == 0);
+        assert(TimerEnable(pStatus->timerFd) == 0);
+	}
 }
 
 static void canhcb_sender_suspend(void)
@@ -200,6 +208,8 @@ static void canhcb_sender_resume(void)
 
 static void canhcb_show(char * buf)
 {
+    if (!pStatus)
+        return;
 	canhcb_sender_suspend();
 	
 	/* construct information content */
