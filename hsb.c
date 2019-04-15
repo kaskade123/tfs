@@ -6,7 +6,7 @@
 
 #define OPT_MAX_CHN         8
 
-#define HSB_BANDWIDTH       10000000
+#define HSB_BANDWIDTH       1000000
 #define HSB_SFP_CNT         24
 
 typedef struct opt_status
