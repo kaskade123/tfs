@@ -51,7 +51,8 @@ static void _voltage_print(VOLSNR_DEV_S * pDev, char * buf)
     if (hdr < 0)
         return;
 
-    assert(VoltageGet(hdr, &vol) == 0);
+    if (VoltageGet(hdr, &vol))
+        vol = 0;
 
     DeviceRelease(hdr);
 
