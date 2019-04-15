@@ -177,7 +177,12 @@ void manage_start(void)
     assert(pStatus->pkt);
 
     pStatus->hdr = ethdev_get(MANAGE_DEV_NAME);
-    assert(pStatus->hdr >= 0);
+    if(pStatus->hdr < 0)
+    {
+       free(pStatus);
+       pStatus = NULL;
+       return;
+    }
 
     pStatus->txSem = semBCreate(SEM_Q_PRIORITY, SEM_EMPTY);
     assert(pStatus->txSem);
@@ -197,6 +202,9 @@ void manage_start(void)
 static void manage_show(char * buf)
 {
     int i;
+
+    if (!pStatus)
+        return;
 
     TimerDisable(pStatus->timerFd);
     taskDelay(1);
