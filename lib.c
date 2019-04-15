@@ -66,10 +66,10 @@ static void light_start(void)
 
 	/* Get two light handler */
 	redFd = light_get("LED1");
-	assert(redFd >= 0);
 
 	/* Turn On Red Light */
-	assert(LightOn(redFd) == 0);
+	if (redFd >= 0)
+        assert(LightOn(redFd) == 0);
 }
 
 /*
@@ -80,11 +80,11 @@ static void light_blink(void)
 	int greenFd;
 
 	greenFd = light_get("LED2");
-	assert(greenFd >= 0);
 
 	/* Start blink task */
-	assert(taskSpawn("tLight", 30, VX_FP_TASK, 0x4000, blink_task, greenFd,
-			0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
+	if (greenFd >= 0)
+        assert(taskSpawn("tLight", 30, VX_FP_TASK, 0x4000, blink_task, greenFd,
+                0,0,0,0,0,0,0,0,0) != TASK_ID_ERROR);
 }
 
 /*
