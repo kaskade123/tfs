@@ -203,9 +203,10 @@ static void eth_show(char * buf)
 		{
 		    if (pStatus->hdr[i] >= 0)
                 sprintf(buf + strlen(buf),
-                        "eth%d : Send %u Recv %u Send Fail %u Recv Fail %u\n", i + 1,
+                        "eth%d : Send %u Recv %u Send Fail %u Recv Fail %u Missing %u\n", i + 1,
                         pStatus->pktSent[i], pStatus->pktRecv[i],
-                        pStatus->pktSendFail[i], pStatus->pktRecvFail[i]);
+                        pStatus->pktSendFail[i], pStatus->pktRecvFail[i],
+                        pStatus->pktSent[i] - pStatus->pktRecv[i] - pStatus->pktRecvFail[i]);
 		}
 
 		eth_sender_resume();
