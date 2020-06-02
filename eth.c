@@ -1,5 +1,5 @@
 #include "lib.h"
-
+/*add some words*/
 #define ETH_DEV_COUNT	4
 #define ETH_DEV_PREFIX	"MMS"
 #define ETH_BUFFER_LEN	1600
