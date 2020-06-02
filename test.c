@@ -1,5 +1,5 @@
 #include "lib.h"
-
+/*I add some words there*/
 MODULE_DECLARE(canhcb);
 MODULE_DECLARE(hsb);
 MODULE_DECLARE(ion);
